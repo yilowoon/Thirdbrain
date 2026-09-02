@@ -13,7 +13,7 @@
 
 const SEV_W = { low: 1, mid: 3, high: 7, critical: 14 };
 const STATUS_ORDER = ['good', 'warning', 'serious', 'critical'];
-const REL_TYPES = new Set(['resolves', 'synergy', 'dependency', 'conflict']);
+const REL_TYPES = new Set(['resolves', 'synergy', 'dependency', 'conflict', 'affinity']);
 
 /** 대응 공약 수에 따른 위험 감쇄. 공약 하나가 위험을 다 없애지는 못한다. */
 const DAMP = [0, 0.18, 0.30, 0.38];
@@ -32,6 +32,7 @@ const ALARM = '#e13b86';
 function nodeValue(n) {
   if (n.level === 'pledge') return n.resolveCount || 0;
   if (n.level === 'org') return (n.teams || []).length;
+  if (n.level === 'team') return n.deg || 1;
   return Math.round(n.risk ?? 0);
 }
 
@@ -40,6 +41,7 @@ function goldFor(n) {
   const v = nodeValue(n);
   const t = n.level === 'pledge' ? Math.min(1, v / 5)
     : n.level === 'org' ? Math.min(1, v / 4)
+    : n.level === 'team' ? 0.2
     : Math.min(1, Math.max(0, (v - 35) / 45));
   // 하한을 2단계로 두어 화면의 기조가 골드로 읽히게 한다 (0~1 단계는 배경에 묻힌다)
   return GOLD[Math.max(2, Math.min(GOLD.length - 1, 2 + Math.round(t * 4)))];
@@ -55,7 +57,7 @@ const state = {
   hiddenStatus: new Set(),
   hiddenLinkTypes: new Set(),
   hiddenKinds: new Set(),
-  showOrg: false,
+  showOrg: true,
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
@@ -120,6 +122,23 @@ function sectorSpans() {
   }
   return map;
 }
+
+/** 한국어를 형태소 분석 없이 다루기 위한 문자 바이그램 집합 */
+function textGrams(text) {
+  const clean = String(text || '').replace(/[^가-힣a-zA-Z0-9]+/g, ' ').trim().toLowerCase();
+  const set = new Set();
+  for (const w of clean.split(/\s+/)) {
+    if (w.length < 2) continue;
+    for (let i = 0; i < w.length - 1; i++) set.add(w.slice(i, i + 2));
+  }
+  return set;
+}
+const diceSim = (a, b) => {
+  if (!a.size || !b.size) return 0;
+  let hit = 0;
+  for (const g of a) if (b.has(g)) hit++;
+  return (2 * hit) / (a.size + b.size);
+};
 
 /* ═════════════════════════════════════════════════════════════
    2. 모델 — 정밀 진단(4축 평가) → 잔여위험 → 상태
@@ -266,7 +285,7 @@ function buildModel(raw) {
     });
   }
 
-  // ── 행정조직(과) — 섹터 바깥에 붙는 선택 레이어
+  // ── 행정조직 — 과(바깥 궤도) → 팀(가장 바깥 궤도)
   const org = raw.org;
   if (org) {
     const divs = org.bureaus.flatMap((b) => b.divisions.map((d) => ({ ...d, bureauName: b.name })));
@@ -275,21 +294,41 @@ function buildModel(raw) {
       if (!bySec.has(sid)) bySec.set(sid, []);
       bySec.get(sid).push(d);
     }
+    const teamSeen = new Set();
     for (const [sid, list] of bySec) {
       const sp = spans.get(sid);
       if (!sp) continue;
       list.forEach((d, i) => {
         const a = sp.a0 + ((i + 0.5) / list.length) * (sp.a1 - sp.a0);
-        const pt = ringPoint(sp.side, a, RING.outer + 96 + 22 * (i % 2));
+        const pt = ringPoint(sp.side, a, RING.outer + 92 + 24 * (i % 2));
+        const orgNodeId = `${d.id}@${sid}`;
         nodes.push({
           ...d,
-          id: `${d.id}@${sid}`, orgId: d.id,
+          id: orgNodeId, orgId: d.id,
           level: 'org', kind: 'org',
           label: d.name, sector: sid, sectorLabel: sectorById.get(sid).label,
           domain: sectorById.get(sid).domain, side: sp.side,
           status: null, signals: [],
           r: Math.max(7, Math.min(14, 6.5 + 1.1 * Math.sqrt(d.teams.length))),
           tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
+        });
+
+        // 팀은 과가 처음 등장한 섹터에만 매단다 (같은 팀이 중복되지 않게)
+        if (teamSeen.has(d.id)) return;
+        teamSeen.add(d.id);
+        const span = (sp.a1 - sp.a0) / Math.max(1, list.length);
+        d.teams.forEach((t, k) => {
+          const ta = a + (k - (d.teams.length - 1) / 2) * (span * 0.62 / Math.max(1, d.teams.length));
+          const tp = ringPoint(sp.side, ta, RING.outer + 168 + 20 * (k % 2));
+          nodes.push({
+            id: t.id, level: 'team', kind: 'team',
+            label: t.name, parentOrg: orgNodeId, division: d.name, bureauName: d.bureauName,
+            sector: sid, sectorLabel: sectorById.get(sid).label,
+            domain: sectorById.get(sid).domain, side: sp.side,
+            duty: d.duty, status: null, signals: [],
+            r: 5.2,
+            tx: tp.x, ty: tp.y, x: tp.x, y: tp.y,
+          });
         });
       });
     }
@@ -349,7 +388,9 @@ function buildModel(raw) {
   // ── 링크
   const gLinks = [];
   for (const n of nodes) {
-    if (n.level === 'diagnosis' || n.level === 'pledge' || n.level === 'org')
+    if (n.level === 'team')
+      gLinks.push({ source: n.id, target: n.parentOrg, type: 'converge', weight: 1 });
+    else if (n.level === 'diagnosis' || n.level === 'pledge' || n.level === 'org')
       gLinks.push({ source: n.id, target: n.sector, type: 'converge', weight: 1 });
     else if (n.level === 'sector') gLinks.push({ source: n.id, target: n.domain, type: 'converge', weight: 1 });
     else if (n.level === 'domain') gLinks.push({ source: n.id, target: city.id, type: 'converge', weight: 1 });
@@ -361,6 +402,29 @@ function buildModel(raw) {
   }
   for (const l of links) {
     if (byId2.has(l.source) && byId2.has(l.target)) gLinks.push({ ...l });
+  }
+
+  // ── 진단 간 연관(affinity) — 서로 다른 섹터에 흩어져 있지만 같은 문제를 공유하는 쌍.
+  //    문자 바이그램 유사도로 뽑아 각 진단마다 상위 2개까지만 잇는다.
+  const diagNodes = nodes.filter((n) => n.level === 'diagnosis');
+  const grams = new Map();
+  for (const d of diagNodes) grams.set(d.id, textGrams(`${d.label} ${d.detail || ''}`));
+  const seenPair = new Set();
+  for (const a of diagNodes) {
+    const ga = grams.get(a.id);
+    const near = [];
+    for (const b of diagNodes) {
+      if (a.id === b.id || a.sector === b.sector) continue;
+      const sim = diceSim(ga, grams.get(b.id));
+      if (sim >= 0.20) near.push({ id: b.id, sim });
+    }
+    near.sort((x, y) => y.sim - x.sim);
+    for (const n of near.slice(0, 2)) {
+      const key = [a.id, n.id].sort().join('|');
+      if (seenPair.has(key)) continue;
+      seenPair.add(key);
+      gLinks.push({ source: a.id, target: n.id, type: 'affinity', weight: n.sim, note: '같은 문제를 공유하는 진단' });
+    }
   }
 
   // 각 노드에 걸린 연결 수 — 선 굵기와 노드 위상의 근거가 된다
@@ -464,7 +528,7 @@ function simulate() {
   // 뇌 형상을 유지해야 하므로 위치력을 강하게 두고, 링크는 국소 장력만 준다.
   const pull = (n) =>
     n.level === 'city' ? 1 : n.level === 'domain' ? 0.6
-      : n.level === 'sector' ? 0.55 : n.level === 'org' ? 0.5 : 0.34;
+      : n.level === 'sector' ? 0.55 : (n.level === 'org' || n.level === 'team') ? 0.55 : 0.34;
 
   state.sim = d3.forceSimulation(state.nodes)
     .force('link', d3.forceLink(state.links).id((d) => d.id)
@@ -562,11 +626,13 @@ function render() {
 
   all.select('circle.mark-ring')
     .style('display', (n) => (isPledge(n) ? 'none' : null))
+    .attr('stroke-dasharray', (n) => (n.level === 'team' ? '2 2' : null))
     .attr('r', (n) => n.r)
     .attr('fill', 'none')
     .attr('stroke', nodeFill)
     .attr('stroke-width', (n) =>
-      n.level === 'city' ? 2 : n.level === 'domain' ? 1.9 : n.level === 'sector' ? 1.7 : 1.5);
+      n.level === 'city' ? 2 : n.level === 'domain' ? 1.9 : n.level === 'sector' ? 1.7
+        : n.level === 'team' ? 1 : 1.5);
 
   all.select('circle.mark-core')
     .style('display', (n) => (isPledge(n) ? 'none' : null))
@@ -574,6 +640,7 @@ function render() {
       if (n.level === 'city') return n.r * 0.30;
       if (n.level === 'domain') return n.r * 0.34;
       if (n.level === 'sector') return n.r * (0.26 + 0.34 * (FILL[n.status] ?? 0.3));
+      if (n.level === 'team') return n.r * 0.34;
       return n.r * (FILL[n.status] ?? 0.25);
     })
     .attr('fill', nodeFill)
@@ -606,18 +673,25 @@ function render() {
     .text((n) => `${nodeValue(n)}:${n.label}`);
 
   state.sim.on('tick', () => {
-    gLink.selectAll('path.link').attr('d', taperPath);
-    gLinkMark.selectAll('line')
-      .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
-      .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
-    gDefs.selectAll('linearGradient.lg')
-      .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
-      .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
+    // 선이 숨겨진 상태(선택 전)에서는 선 계산을 통째로 건너뛴다 — 노드가 400개를
+    // 넘어가면 이 차이가 크다. 선택 시점에 refreshLinks() 로 한 번에 맞춘다.
+    if (state.focus) refreshLinks();
     all.attr('transform', (n) => `translate(${n.x},${n.y})`);
   });
 
   applyVisibility();
   applyLabelVisibility();
+}
+
+/** 선의 기하와 그라데이션 좌표를 현재 노드 위치에 맞춘다. */
+function refreshLinks() {
+  gLink.selectAll('path.link').attr('d', taperPath);
+  gLinkMark.selectAll('line')
+    .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
+    .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
+  gDefs.selectAll('linearGradient.lg')
+    .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
+    .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
 }
 
 /** 노드 쪽 선 반폭. 연결이 많고 큰 노드일수록 두껍다. */
@@ -711,14 +785,14 @@ const strengthAt = (hop) => Math.max(0.28, 1 - hop * 0.20);
 
 function applyVisibility() {
   const q = state.query.trim().toLowerCase();
-  const isLeaf = (n) => n.level === 'diagnosis' || n.level === 'pledge' || n.level === 'org';
+  const isLeaf = (n) => ['diagnosis', 'pledge', 'org', 'team'].includes(n.level);
 
   const matchesQuery = (n) => !q ||
     [n.label, n.detail, n.sectorLabel].filter(Boolean)
       .some((v) => String(v).toLowerCase().includes(q));
 
   const inView = (n) => {
-    if (n.level === 'org') return state.showOrg;
+    if (n.level === 'org' || n.level === 'team') return state.showOrg;
     if (!isLeaf(n)) return true;
     if (state.hiddenKinds.has(n.kind)) return false;
     if (state.view === 'gap') return n.level === 'diagnosis' && n.coverage === 0;
@@ -738,6 +812,7 @@ function applyVisibility() {
 
   const hop = state.focus ? activationMap(state.focus) : null;
   state.actHops = hop;
+  if (hop) refreshLinks();
 
   // 애니메이션 재시작을 위해 클래스를 먼저 걷어낸다
   gNode.selectAll('g.node').classed('act', false);
@@ -745,7 +820,7 @@ function applyVisibility() {
   if (gNode.node()) gNode.node().getBoundingClientRect();
 
   gNode.selectAll('g.node')
-    .classed('hidden-layer', (n) => n.level === 'org' && !state.showOrg)
+    .classed('hidden-layer', (n) => (n.level === 'org' || n.level === 'team') && !state.showOrg)
     .classed('dim', (n) => !visible.has(n.id) || (hop && !hop.has(n.id)))
     .classed('act', (n) => !!hop && hop.has(n.id) && visible.has(n.id))
     .classed('act-self', (n) => n.id === state.focus)
@@ -759,26 +834,18 @@ function applyVisibility() {
       return (strengthAt(hop.get(n.id)) * 0.42).toFixed(3);
     });
 
-  const linkDim = (l) => {
+  // 선택 전에는 선을 아예 그리지 않는다. 점만 남은 화면에서 노드를 누르는
+  // 순간 그 노드의 망만 드러나게 하기 위해서다.
+  const linkHidden = (l) => {
+    if (!hop) return true;
     if (state.hiddenLinkTypes.has(l.type)) return true;
     if (!visible.has(l.source.id) || !visible.has(l.target.id)) return true;
-    if ((state.view === 'conflict' || state.view === 'risk') && l.type === 'converge') return true;
-    if (hop) return !(hop.has(l.source.id) && hop.has(l.target.id));
-    return false;
+    return !(hop.has(l.source.id) && hop.has(l.target.id));
   };
-  const orgHidden = (l) =>
-    !state.showOrg && ((l.source.level === 'org') || (l.target.level === 'org'));
-  gLink.selectAll('path.link').classed('hidden-layer', orgHidden);
-  gLinkMark.selectAll('line').classed('dim', linkDim);
+  gLink.selectAll('path.link').classed('hidden-layer', linkHidden).classed('dim', false);
+  gLinkMark.selectAll('line').classed('hidden-layer', linkHidden);
 
   gLink.selectAll('path.link')
-    .classed('dim', (l) => {
-      if (state.hiddenLinkTypes.has(l.type)) return true;
-      if (!visible.has(l.source.id) || !visible.has(l.target.id)) return true;
-      if ((state.view === 'conflict' || state.view === 'risk') && l.type === 'converge') return true;
-      if (hop) return !(hop.has(l.source.id) && hop.has(l.target.id));
-      return false;
-    })
     .classed('act', (l) => {
       if (!hop || state.hiddenLinkTypes.has(l.type)) return false;
       const a = hop.get(l.source.id), b = hop.get(l.target.id);
@@ -800,7 +867,8 @@ function applyLabelVisibility() {
   const k = state.transform.k;
   // 작은 점에도 값을 붙여 보여준다. 너무 축소했을 때만 하위 라벨을 접는다.
   gNode.selectAll('text.node-label').style('display', (n) => {
-    if (n.level === 'org') return state.showOrg && k >= 0.42 ? null : 'none';
+    if (n.level === 'team') return state.showOrg && k >= 0.55 ? null : 'none';
+    if (n.level === 'org') return state.showOrg && k >= 0.40 ? null : 'none';
     if (n.level === 'city' || n.level === 'domain') return null;
     if (n.level === 'sector') return k >= 0.3 ? null : 'none';
     if (state.focus === n.id) return null;
@@ -1027,9 +1095,10 @@ function renderDetail(n) {
   box.hidden = false;
 
   const kindTag = n.level === 'diagnosis' ? '진단' : n.level === 'pledge' ? '공약'
-    : n.level === 'org' ? '행정조직' : null;
+    : n.level === 'org' ? '과' : n.level === 'team' ? '팀' : null;
   const sub = n.level === 'diagnosis' ? `${n.sectorLabel} · ${n.no}번 진단`
     : n.level === 'pledge' ? `${n.sectorLabel}${n.round ? ` · ${n.round}차 브리핑` : ''}`
+    : n.level === 'team' ? `${n.bureauName} · ${n.division}`
     : n.level === 'org' ? `${n.bureauName} · ${n.sectorLabel}`
     : n.level === 'sector' ? `진단 ${n.diagnoses.length} · 공약 ${n.pledges.length} · 위험 ${n.atRisk}`
     : n.level === 'domain' ? `${n.children.length}개 섹터 · 진단 ${n.diagCount} · 위험 ${n.atRisk}`
@@ -1187,6 +1256,14 @@ function renderDetail(n) {
       </button>`).join('')}</div>`);
   }
 
+  if (n.level === 'team') {
+    parts.push(`<div class="d-section"><h3>소속</h3>
+      <dl class="kv"><dt>국</dt><dd>${esc(n.bureauName)}</dd><dt>과</dt><dd>${esc(n.division)}</dd>
+      <dt>섹터</dt><dd>${esc(n.sectorLabel)}</dd></dl></div>`);
+    parts.push(`<div class="d-section"><h3>과 담당업무</h3><p class="d-detail" style="margin-left:0">${esc(n.duty)}</p>
+      <p class="empty-note">팀 이름은 공식 조직도에 없어 담당업무에서 도출한 것이다.</p></div>`);
+  }
+
   if (n.level === 'org') {
     parts.push(`<div class="d-section"><h3>담당 업무</h3><p class="d-detail" style="margin-left:0">${esc(n.duty)}</p></div>`);
     parts.push(`<div class="d-section"><h3>팀 ${n.teams.length}</h3>
@@ -1225,7 +1302,7 @@ function fitToScreen(ms = 600) {
   if (rect.width < 10 || rect.height < 10) return;
   const pad = 70;
   // 조직 레이어를 켜면 바깥 궤도가 넓어지므로 그만큼 범위를 넓힌다
-  const edge = RING.outer + (state.showOrg ? 132 : 26);
+  const edge = RING.outer + (state.showOrg ? 210 : 26);
   const ext = RING.cx + RING.R + edge;
   const [x0, x1] = [-ext - pad, ext + pad];
   const [y0, y1] = [-(RING.R + edge) - pad, RING.R + edge + pad];
