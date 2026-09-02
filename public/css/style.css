@@ -74,25 +74,23 @@ body {
   color: inherit; font: inherit; text-align: left;
   cursor: pointer; border-radius: 8px;
 }
-.brand:hover .brand-text strong { color: var(--connect-hi); }
-.brand:hover .brand-mark::before, .brand:hover .brand-mark::after { border-color: var(--connect); }
+.brand:hover .wm-2 { color: var(--connect-hi); }
 .brand:focus-visible { outline: 2px solid var(--connect); outline-offset: 3px; }
 
-.brand-mark {
-  width: 30px; height: 22px; flex: none;
-  position: relative;
-}
-.brand-mark::before, .brand-mark::after {
-  content: ""; position: absolute; top: 0;
-  width: 20px; height: 20px; border-radius: 50%;
-  border: 1.4px solid var(--ink-2);
-  opacity: .85;
-}
-.brand-mark::before { left: 0; }
-.brand-mark::after  { right: 0; }
+.brand-mark { width: 30px; height: 30px; flex: none; overflow: visible; }
+.bm-lens { fill: #ffc75a; fill-opacity: .30; transition: fill .2s, fill-opacity .2s; }
+.bm-ring { fill: none; stroke: url(#bm-ring); stroke-width: 2; transition: stroke .2s; }
+.bm-core { fill: #ffc75a; transition: fill .2s; }
+
+/* 로고에 마우스를 올리면 앱의 '연결' 상태와 같은 블루로 물든다 */
+.brand:hover .bm-ring { stroke: var(--connect); }
+.brand:hover .bm-core { fill: var(--connect-hi); }
+.brand:hover .bm-lens { fill: var(--connect); fill-opacity: .16; }
 
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
-.brand-text strong { font-size: 15px; letter-spacing: -0.01em; }
+.brand-text strong { font-size: 15.5px; font-weight: 400; letter-spacing: .01em; }
+.wm-1 { color: var(--ink-2); }
+.wm-2 { color: var(--ink); font-weight: 650; }
 .brand-text span { font-size: 11px; color: var(--ink-3); }
 
 .topbar-tools {

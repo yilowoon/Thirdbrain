@@ -281,6 +281,26 @@ node tools/link-proposal.js --apply <ID> --auto   # 자동 분석 그대로 반�
 
 ---
 
+## 로고
+
+맞물린 두 원과 그 겹침에서 생기는 렌즈 — **둘이 만날 때 비로소 생기는 제3의 공간**이 곧 Third Brain이다.
+화면의 기하(두 원환 + 중앙 렌즈 수렴점)를 그대로 마크로 압축했으므로 제품과 로고가 한 체계다.
+
+```
+public/img/logo.svg        골드 그라데이션 정본
+public/img/logo-mono.svg   단색(currentColor) — 인쇄·워터마크용
+public/logo.html           브랜드 시트 (크기별·배경별·색·사용 규칙)
+```
+
+- 마크는 정사각 viewBox 48×48, 최소 사용 크기 16px
+- 워드마크는 **Third**(보조색) + **Brain**(본문색)으로 굵기를 나눈다
+- 두 원의 간격과 굵기는 바꾸지 않는다 — 겹침이 로고의 뜻이다
+- `logo-mono.svg` 를 `<img src>` 로 넣으면 색이 상속되지 않는다. **인라인**으로 넣을 것
+
+브랜드 시트: http://localhost:4173/logo.html
+
+---
+
 ## 데이터
 
 ```

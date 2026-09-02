@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="ThirdBrain">
+  <title>ThirdBrain</title>
+  <desc>단색 버전. currentColor 를 따르므로 인라인으로 넣으면 주변 글자색을 그대로 쓴다.</desc>
+  <path d="M24,12 A13,13 0 0 1 24,36 A13,13 0 0 1 24,12 Z" fill="currentColor" fill-opacity="0.20"/>
+  <circle cx="19" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/>
+  <circle cx="29" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/>
+  <circle cx="24" cy="24" r="3" fill="currentColor"/>
+</svg>

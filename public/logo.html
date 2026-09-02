@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ThirdBrain 로고</title>
+<style>
+  :root {
+    --page:#0a0a0b; --surface:#101012; --hairline:rgba(255,255,255,.075);
+    --ink:#f2f1ee; --ink-2:#a8a6a0; --ink-3:#6f6d69;
+    --g2:#8f7139; --g4:#c59b49; --g6:#ffc75a; --connect:#43acfb;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; padding:34px 30px 60px; background:var(--page); color:var(--ink);
+    font:14px/1.6 system-ui,-apple-system,"Segoe UI","Malgun Gothic",sans-serif;
+  }
+  h1 { font-size:16px; font-weight:500; letter-spacing:.04em; margin:0 0 4px; }
+  .sub { color:var(--ink-3); font-size:12px; margin-bottom:28px; }
+  h2 {
+    font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-3); font-weight:500; margin:0 0 12px;
+    padding-bottom:6px; border-bottom:1px solid var(--hairline);
+  }
+  section { margin-bottom:34px; }
+  .row { display:flex; align-items:flex-end; gap:34px; flex-wrap:wrap; }
+  .cell { text-align:center; }
+  .cell span { display:block; margin-top:8px; font-size:10.5px; color:var(--ink-3); }
+  .plate { padding:26px 30px; border-radius:12px; border:1px solid var(--hairline); }
+  .plate.dark { background:var(--surface); }
+  .plate.light { background:#f2f1ee; color:#0a0a0b; }
+  .plate.gold { background:linear-gradient(135deg,#3a2f18,#1a1610); }
+  .lockup { display:flex; align-items:center; gap:12px; }
+  .lockup strong { font-size:19px; font-weight:400; letter-spacing:.01em; }
+  .wm-1 { color:var(--ink-2); }
+  .wm-2 { color:var(--ink); font-weight:650; }
+  .plate.light .wm-1 { color:#6f6d69; }
+  .plate.light .wm-2 { color:#0a0a0b; }
+  .note { color:var(--ink-2); font-size:12.5px; line-height:1.7; max-width:62ch; }
+  .note b { color:var(--ink); font-weight:600; }
+  code {
+    background:var(--surface); border:1px solid var(--hairline);
+    padding:1px 6px; border-radius:5px; font-size:12px; color:var(--g4);
+  }
+  .sw { display:flex; gap:10px; flex-wrap:wrap; }
+  .sw i {
+    width:66px; height:44px; border-radius:8px; display:block;
+    border:1px solid var(--hairline);
+  }
+  .sw div { text-align:center; font-size:10px; color:var(--ink-3); margin-top:5px; }
+</style>
+</head>
+<body>
+
+<h1>ThirdBrain 로고</h1>
+<div class="sub">맞물린 두 원과 그 겹침에서 생기는 렌즈 — 둘이 만날 때 생기는 제3의 공간</div>
+
+<section>
+  <h2>마크 · 크기별</h2>
+  <div class="row">
+    <div class="cell"><img src="img/logo.svg" width="128" height="128" alt="ThirdBrain 128px" /><span>128</span></div>
+    <div class="cell"><img src="img/logo.svg" width="64" height="64" alt="64px" /><span>64</span></div>
+    <div class="cell"><img src="img/logo.svg" width="40" height="40" alt="40px" /><span>40</span></div>
+    <div class="cell"><img src="img/logo.svg" width="30" height="30" alt="30px" /><span>30 · 헤더</span></div>
+    <div class="cell"><img src="img/logo.svg" width="20" height="20" alt="20px" /><span>20</span></div>
+    <div class="cell"><img src="img/logo.svg" width="16" height="16" alt="16px" /><span>16 · 파비콘</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>배경별</h2>
+  <div class="row">
+    <div class="plate dark">
+      <div class="lockup">
+        <img src="img/logo.svg" width="40" height="40" alt="" />
+        <strong><span class="wm-1">Third</span><span class="wm-2">Brain</span></strong>
+      </div>
+    </div>
+    <div class="plate light">
+      <div class="lockup">
+        <img src="img/logo.svg" width="40" height="40" alt="" />
+        <strong><span class="wm-1">Third</span><span class="wm-2">Brain</span></strong>
+      </div>
+    </div>
+    <div class="plate gold">
+      <div class="lockup">
+        <img src="img/logo.svg" width="40" height="40" alt="" />
+        <strong><span class="wm-1">Third</span><span class="wm-2">Brain</span></strong>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>단색 (currentColor)</h2>
+  <div class="row">
+    <div class="plate dark" style="color:var(--ink)">
+      <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path d="M24,12 A13,13 0 0 1 24,36 A13,13 0 0 1 24,12 Z" fill="currentColor" fill-opacity="0.20"/><circle cx="19" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="29" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg>
+    </div>
+    <div class="plate light" style="color:#0a0a0b">
+      <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path d="M24,12 A13,13 0 0 1 24,36 A13,13 0 0 1 24,12 Z" fill="currentColor" fill-opacity="0.20"/><circle cx="19" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="29" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg>
+    </div>
+    <div class="plate dark" style="color:var(--connect)">
+      <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path d="M24,12 A13,13 0 0 1 24,36 A13,13 0 0 1 24,12 Z" fill="currentColor" fill-opacity="0.20"/><circle cx="19" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="29" cy="24" r="13" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg>
+    </div>
+  </div>
+  <p class="note" style="margin-top:12px">
+    <code>logo-mono.svg</code> 는 <code>currentColor</code> 를 따른다. 인쇄·워터마크·단색 제약이 있는 곳에 쓴다.<br />
+    다만 <code>&lt;img src&gt;</code> 로 넣으면 <b>색이 상속되지 않아 검게 나온다</b> — SVG 가 별도 문서로 취급되기 때문이다.
+    반드시 <b>인라인</b>으로 넣거나 CSS <code>mask</code> 를 쓴다. 위 세 판은 인라인이다.
+  </p>
+</section>
+
+<section>
+  <h2>색</h2>
+  <div class="sw">
+    <div><i style="background:#8f7139"></i><div>#8f7139</div></div>
+    <div><i style="background:#c59b49"></i><div>#c59b49</div></div>
+    <div><i style="background:#ffc75a"></i><div>#ffc75a</div></div>
+    <div><i style="background:#43acfb"></i><div>#43acfb 연결</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>쓰는 규칙</h2>
+  <p class="note">
+    · 마크는 정사각 <b>viewBox 48×48</b>. 최소 사용 크기는 <b>16px</b>.<br />
+    · 마크 둘레에 <b>마크 높이의 25%</b> 이상 여백을 둔다.<br />
+    · 워드마크는 <b>Third 는 보조색, Brain 은 본문색</b>으로 굵기를 나눈다. 전부 같은 굵기로 쓰지 않는다.<br />
+    · 두 원의 <b>간격과 굵기를 바꾸지 않는다</b> — 겹침이 로고의 뜻이다.<br />
+    · 마우스를 올리면 앱의 '연결' 상태와 같은 <b>블루</b>로 물든다. 정적 인쇄물에는 적용하지 않는다.
+  </p>
+</section>
+
+</body>
+</html>
