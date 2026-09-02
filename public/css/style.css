@@ -16,20 +16,21 @@
   --ink-2:       #a8a6a0;
   --ink-3:       #6f6d69;
 
-  /* 골드 시퀀셜 램프 — 값이 클수록 밝다 */
-  --g0: #5c4a28;  --g1: #755d31;  --g2: #8f7139;  --g3: #aa8641;
-  --g4: #c59b49;  --g5: #e2b151;  --g6: #ffc75a;
-  --gold: #c59b49;
+  /* 얽힘도 램프 — 그레이(얽힘 적음) → 골드(얽힘 많음). 명도 단조 증가 */
+  --g0: #605f5c;  --g1: #776e5c;  --g2: #8e7d5b;  --g3: #a68d58;
+  --g4: #be9c52;  --g5: #d7ac49;  --g6: #f0bb3b;
+  --gold: #be9c52;
+  --silver: #c4cbd4;
 
   /* 연결(점등) — 블루 */
   --connect:    #43acfb;
   --connect-hi: #76c7ff;
 
   /* 상태 */
-  --st-good:     #8f7139;
-  --st-warning:  #c59b49;
-  --st-serious:  #e2b151;
-  --st-critical: #e13b86;   /* 위험 — 골드와 색각이상 ΔE 8.9 로 분리된 유일한 붉은 계열 */
+  --st-good:     #776e5c;
+  --st-warning:  #a68d58;
+  --st-serious:  #d7ac49;
+  --st-critical: #c4cbd4;   /* 위험 — 실버. 램프 전 단계와 색각이상 ΔE 15.5 이상 분리 */
 
   --radius: 10px;
   --font: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
@@ -78,9 +79,9 @@ body {
 .brand:focus-visible { outline: 2px solid var(--connect); outline-offset: 3px; }
 
 .brand-mark { width: 30px; height: 30px; flex: none; overflow: visible; }
-.bm-lens { fill: #ffc75a; fill-opacity: .30; transition: fill .2s, fill-opacity .2s; }
+.bm-lens { fill: #f0bb3b; fill-opacity: .30; transition: fill .2s, fill-opacity .2s; }
 .bm-ring { fill: none; stroke: url(#bm-ring); stroke-width: 2; transition: stroke .2s; }
-.bm-core { fill: #ffc75a; transition: fill .2s; }
+.bm-core { fill: #f0bb3b; transition: fill .2s; }
 
 /* 로고에 마우스를 올리면 앱의 '연결' 상태와 같은 블루로 물든다 */
 .brand:hover .bm-ring { stroke: var(--connect); }
@@ -772,7 +773,7 @@ body {
 .legend-org { background: none; border: 1.3px solid var(--ink-2); border-radius: 2px; }
 .legend-taper {
   width: 18px; height: 6px; flex: none;
-  background: linear-gradient(to right, var(--g5), var(--g2));
+  background: linear-gradient(to right, var(--g6), var(--g0));
   clip-path: polygon(0 0, 100% 38%, 100% 62%, 0 100%);
 }
 

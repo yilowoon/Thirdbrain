@@ -19,14 +19,15 @@ const REL_TYPES = new Set(['resolves', 'synergy', 'dependency', 'conflict', 'aff
 const DAMP = [0, 0.18, 0.30, 0.38];
 
 /* ── 색 체계 ────────────────────────────────────────────
-   기본은 골드 시퀀셜 램프. 노드의 값이 클수록 밝고 진해진다.
-   연결(점등)되면 블루로 바뀌고, 위험만 크림슨으로 남는다.
-   위험색은 골드 램프 전 단계와 색각이상 ΔE 8.9 이상 떨어져 있다 —
-   순수 적색은 골드와 적록색각이상에서 구분이 되지 않아 쓸 수 없었다. */
-const GOLD = ['#5c4a28', '#755d31', '#8f7139', '#aa8641', '#c59b49', '#e2b151', '#ffc75a'];
+   램프는 '연결 얽힘도'를 말한다. 얽힘이 적으면 무채색 그레이로 물러나고,
+   얽힐수록 채도가 자라 골드에 가까워진다. 명도가 단조 증가하므로
+   색을 못 봐도 밝기만으로 순서가 읽힌다.
+   연결(점등)되면 블루로 바뀌고, 위험만 실버로 남는다.
+   실버는 램프 전 단계와 색각이상 ΔE 15.5 이상 떨어져 있다. */
+const TONE = ['#605f5c', '#776e5c', '#8e7d5b', '#a68d58', '#be9c52', '#d7ac49', '#f0bb3b'];
 const CONNECT = '#43acfb';
 const CONNECT_HI = '#76c7ff';
-const ALARM = '#e13b86';
+const ALARM = '#c4cbd4';   // 실버 — 경보 전용
 
 /** 노드가 화면에 내거는 값. 라벨의 "값:이름" 에서 앞자리가 된다. */
 function nodeValue(n) {
@@ -36,15 +37,9 @@ function nodeValue(n) {
   return Math.round(n.risk ?? 0);
 }
 
-/** 값 → 골드 램프 단계. 공약·조직은 자체 척도라 별도로 정규화한다. */
-function goldFor(n) {
-  const v = nodeValue(n);
-  const t = n.level === 'pledge' ? Math.min(1, v / 5)
-    : n.level === 'org' ? Math.min(1, v / 4)
-    : n.level === 'team' ? 0.2
-    : Math.min(1, Math.max(0, (v - 35) / 45));
-  // 하한을 2단계로 두어 화면의 기조가 골드로 읽히게 한다 (0~1 단계는 배경에 묻힌다)
-  return GOLD[Math.max(2, Math.min(GOLD.length - 1, 2 + Math.round(t * 4)))];
+/** 얽힘도 → 램프 단계. applyPriority() 에서 계산해 둔 tone 을 그대로 쓴다. */
+function toneFor(n) {
+  return TONE[Math.max(0, Math.min(TONE.length - 1, n.tone ?? 2))];
 }
 
 const state = {
@@ -165,6 +160,47 @@ function applyPriority(nodes, links, byId) {
     } else {
       n.priority = null;
     }
+  }
+
+  /* ── 얽힘도(entanglement) → 색 단계 ─────────────────────────
+     수렴축은 구조라 빼고, 실제 의미관계(해소·시너지·의존·상충·연관)만 센다.
+     섹터를 넘어가는 연결은 얽힘이 더 깊다고 보고 0.5 를 더 얹는다.
+     정책층(진단·공약) 안에서 백분위를 내 램프 7단계에 태우고,
+     구조층(섹터·영역·시·과·팀)은 자기 위상에 맞는 단계를 고정으로 준다. */
+  const relDeg = new Map();
+  for (const l of links) {
+    if (l.type === 'converge') continue;
+    relDeg.set(l.source, (relDeg.get(l.source) || 0) + 1);
+    relDeg.set(l.target, (relDeg.get(l.target) || 0) + 1);
+  }
+  for (const n of nodes) {
+    n.entangle = (relDeg.get(n.id) || 0) + 0.5 * (reach.get(n.id) || 0);
+  }
+
+  const policy = nodes.filter((n) => n.level === 'diagnosis' || n.level === 'pledge');
+  const sortedE = policy.slice().sort((a, b) => a.entangle - b.entangle);
+  const eRank = new Map(sortedE.map((n, i) => [n.id, policy.length > 1 ? i / (policy.length - 1) : 0]));
+  for (const n of policy) {
+    n.entanglePct = eRank.get(n.id);
+    // 얽힘이 아예 없는 노드는 최하단으로 확실히 내린다
+    n.tone = n.entangle === 0 ? 0 : Math.round(n.entanglePct * 6);
+  }
+  for (const n of nodes) {
+    if (n.level === 'team') n.tone = 0;
+    else if (n.level === 'org') n.tone = 1;
+    else if (n.level === 'sector') {
+      const kids = [...n.diagnoses, ...n.pledges];
+      n.tone = kids.length
+        ? Math.round(kids.reduce((a, k) => a + (k.tone ?? 0), 0) / kids.length)
+        : 2;
+    }
+  }
+  for (const n of nodes) {
+    if (n.level === 'domain') {
+      const kids = n.children || [];
+      n.tone = Math.min(6, (kids.length
+        ? Math.round(kids.reduce((a, k) => a + (k.tone ?? 2), 0) / kids.length) : 3) + 1);
+    } else if (n.level === 'city') n.tone = 6;
   }
 
   // 계층 안에서 순위백분위를 내고, 세제곱으로 눌러 상위만 크게
@@ -512,7 +548,7 @@ const statusMeta = () => Object.fromEntries(state.raw.taxonomy.status.map((s) =>
 
 function nodeFill(n) {
   if (n.status === 'critical') return ALARM;
-  return goldFor(n);
+  return toneFor(n);
 }
 const isAlerting = (n) => n.status === 'critical' || n.status === 'serious';
 
@@ -960,6 +996,9 @@ function showTooltip(ev, n) {
   if (n.status) {
     out.push(`<div class="tt-row"><span>상태</span><b style="color:${st[n.status].color}">${st[n.status].icon} ${st[n.status].label}</b></div>`);
   }
+  if (Number.isFinite(n.entangle) && (n.level === 'diagnosis' || n.level === 'pledge')) {
+    out.push(`<div class="tt-row"><span>연결 얽힘도</span><b>${n.entangle.toFixed(1)}<span style="color:var(--ink-3)"> · 상위 ${(100 - (n.entanglePct ?? 0) * 100).toFixed(0)}%</span></b></div>`);
+  }
   if (Number.isFinite(n.priority)) {
     out.push(`<div class="tt-row"><span>우선순위</span><b>${n.priority.toFixed(0)}<span style="color:var(--ink-3)"> · 상위 ${(100 - n.rankPct * 100).toFixed(0)}%</span></b></div>`);
   }
@@ -1111,7 +1150,7 @@ function renderFilters() {
 
 function renderLegend() {
   const tx = state.raw.taxonomy;
-  const ramp = ['#5c4a28', '#755d31', '#8f7139', '#aa8641', '#c59b49', '#e2b151', '#ffc75a'];
+  const ramp = TONE;
   $('#legend-body').innerHTML = `
     <div class="legend-group">
       <h4>노드 (모양)</h4>
@@ -1122,13 +1161,13 @@ function renderLegend() {
       <div class="legend-item" style="margin-top:3px"><span class="legend-swatch legend-org"></span>행정조직(과)</div>
     </div>
     <div class="legend-group">
-      <h4>값 — 클수록 밝은 골드</h4>
+      <h4>연결 얽힘도</h4>
       <div class="legend-ramp">${ramp.map((c) => `<i style="background:${c}"></i>`).join('')}</div>
-      <div class="legend-ramp-cap"><span>낮음</span><span>높음</span></div>
+      <div class="legend-ramp-cap"><span>그레이 · 얽힘 적음</span><span>골드 · 많음</span></div>
     </div>
     <div class="legend-group">
       <h4>상태 · 연결</h4>
-      <div class="legend-item"><span class="legend-swatch" style="background:${tx.status.find((s) => s.id === 'critical').color}"></span>위험 (링이 가득 참)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:${tx.status.find((s) => s.id === 'critical').color}"></span>위험 · 실버 (링이 가득 참)</div>
       <div class="legend-item"><span class="legend-swatch" style="background:#43acfb"></span>연결됨 — 클릭 시 점등</div>
     </div>
     <div class="legend-group">
@@ -1140,8 +1179,8 @@ function renderLegend() {
       </div>
       <p class="legend-note" style="margin-top:5px">선은 관계가 있다는 사실만 알린다. 굵기에 의미를 싣지 않는다.</p>
     </div>
-    <p class="legend-note"><b>점의 크기 = 우선순위</b> — 잔여위험·구조적 심각도·파급을 합산한 값으로,
-      상위 소수만 크게 그린다. 링이 <b>차오를수록</b> 위험이 크다.</p>`;
+    <p class="legend-note"><b>크기 = 우선순위</b>(잔여위험·구조심각도·파급), <b>색 = 연결 얽힘도</b>.
+      둘은 서로 다른 것을 말한다 — 작지만 골드인 점은 덜 급하지만 많이 얽힌 지점이다.</p>`;
 }
 
 const AXIS_LABEL = {
