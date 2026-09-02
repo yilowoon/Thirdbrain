@@ -1501,7 +1501,11 @@ function bindSignalDialog() {
     }
     const fd = new FormData(form);
     try {
-      const res = await fetch('/api/signals', {
+      if (state.readOnly) {
+        alert('정적 배포본에서는 신호를 저장할 수 없습니다. 로컬에서 서버를 띄우고 입력해 주세요.');
+        return;
+      }
+      const res = await fetch('api/signals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1560,8 +1564,14 @@ function bindPolicyDialog() {
     if (!body.title) return err('정책명을 입력해 주세요.');
     err('');
     $('#analyze-hint').textContent = '대조 중…';
+    if (state.readOnly) {
+      analysis = autolinkLocal(body);
+      renderAnalysis(analysis);
+      $('#analyze-hint').textContent = `확신도 ${analysis.confidence} · 브라우저에서 계산`;
+      return;
+    }
     try {
-      const res = await fetch('/api/proposals/analyze', {
+      const res = await fetch('api/proposals/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -1612,8 +1622,19 @@ function bindPolicyDialog() {
     body.deferToClaude = defer;
     if (!defer && !body.resolves.length) return err('연결할 진단을 1개 이상 선택하거나, Claude Code 로 넘기세요.');
     err('');
+    if (state.readOnly) {
+      const id = downloadProposal(body, analysis);
+      dlg.close();
+      alert(`제안을 파일로 내려받았습니다 — ${id}.json
+
+`
+        + `ThirdBrain 프로젝트의 data/inbox/ 에 넣고 터미널에서:
+`
+        + `  node tools/link-proposal.js --show ${id}`);
+      return;
+    }
     try {
-      const res = await fetch('/api/proposals', {
+      const res = await fetch('api/proposals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -1642,13 +1663,83 @@ ${out.inbox}
   });
 }
 
+/** 정적 배포에서는 서버에 쓸 수 없다. 입력은 파일로 내려받아
+ *  data/inbox 에 넣고 Claude Code 가 처리하게 한다. */
+function markReadOnly() {
+  document.body.classList.add('is-readonly');
+  const badge = document.createElement('span');
+  badge.className = 'ro-badge';
+  badge.textContent = '읽기 전용';
+  badge.title = '정적 배포본입니다. 입력한 내용은 파일로 내려받아 Claude Code 로 반영합니다.';
+  $('.topbar-tools').prepend(badge);
+}
+
+/** 서버의 tools/autolink.js 와 같은 방식(문자 바이그램 Dice)을 브라우저에서 재현한다. */
+function autolinkLocal(proposal) {
+  const text = [proposal.title, proposal.need, proposal.goal, (proposal.keywords || []).join(' ')]
+    .filter(Boolean).join(' ');
+  const q = textGrams(text);
+  const sc = (parts) => diceSim(q, textGrams(parts.filter(Boolean).join(' ')));
+
+  const diag = state.raw.diagnoses
+    .map((d) => ({ id: d.id, label: d.label, sector: d.sector, score: +sc([d.label, d.detail]).toFixed(4) }))
+    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+  const pl = state.raw.pledges
+    .map((p) => ({ id: p.id, label: p.label, sector: p.sector, score: +sc([p.label, p.detail]).toFixed(4) }))
+    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+
+  const secScore = new Map();
+  for (const d of diag.slice(0, 12)) secScore.set(d.sector, (secScore.get(d.sector) || 0) + d.score);
+  for (const s of state.raw.taxonomy.sectors) {
+    const v = sc([s.label]);
+    if (v > 0) secScore.set(s.id, (secScore.get(s.id) || 0) + v * 1.5);
+  }
+  const sectors = [...secScore.entries()].map(([id, v]) => ({ id, score: +v.toFixed(4) }))
+    .sort((a, b) => b.score - a.score);
+
+  const top = diag.length ? diag[0].score : 0;
+  const STRONG = Math.max(0.09, top * 0.45);
+  const WEAK = Math.max(0.045, top * 0.18);
+  const resolves = diag.filter((d) => d.score >= STRONG).slice(0, 6);
+  return {
+    sector: sectors[0] && sectors[0].score >= 0.05 ? sectors[0].id : null,
+    sectorRanking: sectors.slice(0, 5),
+    resolves,
+    candidates: diag.filter((d) => d.score >= WEAK && d.score < STRONG).slice(0, 10),
+    relatedPledges: pl.filter((p) => p.score >= Math.max(0.05, top * 0.2)).slice(0, 6),
+    confidence: resolves.length >= 2 ? 'high' : resolves.length >= 1 ? 'medium' : 'low',
+    needsReview: resolves.length === 0,
+    method: '문자 바이그램 Dice 유사도 (브라우저 계산)',
+  };
+}
+
+/** 제안을 파일로 내려받는다 — data/inbox 에 넣고 link-proposal.js 로 반영한다. */
+function downloadProposal(payload, analysis) {
+  const id = 'PR-' + new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    + '-' + Math.random().toString(16).slice(2, 8);
+  const body = {
+    proposal: { id, createdAt: new Date().toISOString(), ...payload, analysis, status: 'pending' },
+    instruction: '이 정책 제안을 12대 섹터·97개 진단과 대조해 소관 섹터와 해소 대상 진단을 판정하고 반영하라.',
+    howto: `data/inbox/ 에 이 파일을 넣고  node tools/link-proposal.js --show ${id}`,
+  };
+  const blob = new Blob([JSON.stringify(body, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = id + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  return id;
+}
+
 /* ═════════════════════════════════════════════════════════════
    10. 부팅
    ═════════════════════════════════════════════════════════════ */
 
 async function reload() {
   const prev = new Map(state.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
-  state.raw = await (await fetch('/api/graph')).json();
+  state.raw = await loadGraph();
   Object.assign(state, buildModel(state.raw));
   for (const n of state.nodes) {
     const p = prev.get(n.id);
@@ -1661,8 +1752,23 @@ async function reload() {
   state.sim.alpha(0.25).restart();
 }
 
+/** 서버가 있으면 API 를, 없으면(정적 배포) 같은 폴더의 graph.json 을 읽는다. */
+async function loadGraph() {
+  try {
+    const res = await fetch('api/graph', { cache: 'no-store' });
+    if (res.ok) {
+      state.readOnly = false;
+      return res.json();
+    }
+  } catch { /* 정적 배포 — 아래로 넘어간다 */ }
+  const res = await fetch('graph.json', { cache: 'no-store' });
+  if (!res.ok) throw new Error('graph.json 을 불러오지 못했습니다.');
+  state.readOnly = true;
+  return res.json();
+}
+
 async function boot() {
-  state.raw = await (await fetch('/api/graph')).json();
+  state.raw = await loadGraph();
   Object.assign(state, buildModel(state.raw));
 
   initCanvas();
@@ -1675,6 +1781,7 @@ async function boot() {
   bindControls();
   bindSignalDialog();
   bindPolicyDialog();
+  if (state.readOnly) markReadOnly();
 
   setTimeout(() => fitToScreen(700), 700);
 }

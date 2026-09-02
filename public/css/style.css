@@ -777,3 +777,10 @@ body {
   background: linear-gradient(to right, var(--g5), var(--g2));
   clip-path: polygon(0 0, 100% 38%, 100% 62%, 0 100%);
 }
+
+.ro-badge {
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--hairline); background: var(--surface-2);
+  color: var(--ink-3); font-size: 11px; letter-spacing: .02em;
+}
+body.is-readonly #btn-add { opacity: .45; }
