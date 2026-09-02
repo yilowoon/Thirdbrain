@@ -76,7 +76,8 @@ function build() {
     '· 연결', graph.links.length, '· 신호', graph.signals.length);
   console.log('  조직 :', graph.org ? `${graph.org._meta.counts.divisions}과 / ${graph.org._meta.counts.teams}팀` : '없음');
   console.log('  graph.json', size(path.join(OUT, 'graph.json')));
-  console.log('\n확인:  http://localhost:3000/thirdbrain/');
+  console.log('');
+  console.log('로컬 확인:  npx serve ' + path.relative(process.cwd(), OUT));
 }
 
 build();
