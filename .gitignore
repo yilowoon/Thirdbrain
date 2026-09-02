@@ -4,3 +4,4 @@ node_modules/
 .env
 data/inbox/*.json
 data/proposals.json
+dist/

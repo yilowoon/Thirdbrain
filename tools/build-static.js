@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * ThirdBrain 정적 배포본 빌드.
- * 서버 없이 도는 형태로 묶어 UCC 사이트의 public/thirdbrain/ 아래에 넣는다.
+ * 서버 없이 도는 형태로 묶는다. 어떤 정적 호스팅에도 그대로 올릴 수 있다.
  *
- *   node tools/build-static.js                 기본 경로로 빌드
+ *   node tools/build-static.js                 dist/ 로 빌드
  *   node tools/build-static.js --out <경로>    다른 곳으로 빌드
  *
  * 데이터 다섯 파일을 graph.json 하나로 합치므로, 배포본은 API 없이
@@ -19,9 +19,7 @@ const ROOT = path.join(__dirname, '..');
 const DATA = path.join(ROOT, 'data');
 const PUBLIC = path.join(ROOT, 'public');
 
-const DEFAULT_OUT = path.join(
-  ROOT, '..', 'UCC_SITE', 'public', 'thirdbrain'
-);
+const DEFAULT_OUT = path.join(ROOT, 'dist');
 
 function arg(name) {
   const i = process.argv.indexOf('--' + name);
