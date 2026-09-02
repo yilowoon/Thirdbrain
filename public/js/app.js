@@ -448,6 +448,8 @@ function render() {
     .on('pointermove', (ev) => moveTooltip(ev))
     .on('pointerleave', hideTooltip);
 
+  // fill:none 인 링은 테두리에서만 이벤트가 잡힌다. 안쪽까지 잡히도록 투명 히트 영역을 깐다.
+  enter.append('circle').attr('class', 'hit');
   enter.append('circle').attr('class', 'halo');
   enter.append('circle').attr('class', 'pulse');
   enter.append('circle').attr('class', 'mark-outer');     // 위험 노드의 이중 링
@@ -461,6 +463,7 @@ function render() {
   // 상태는 색보다 '채움 밀도'가 먼저 말한다 — 색을 못 봐도 읽힌다
   const FILL = { good: 0.20, warning: 0.36, serious: 0.54, critical: 0.72 };
 
+  all.select('circle.hit').attr('r', (n) => n.r + 4);  // 충돌반경(r+5)보다 작게 — 이웃의 hover 를 뺏지 않는다
   all.select('circle.halo').attr('r', (n) => n.r + 4);
   all.select('circle.pulse')
     .attr('r', (n) => n.r + 3)

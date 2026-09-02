@@ -243,7 +243,7 @@ body {
 #graph.is-panning { cursor: grabbing; }
 
 /* ── 그래프 요소 ────────────────────────────────────── */
-.link { fill: none; stroke-linecap: round; transition: opacity .18s; }
+.link { fill: none; stroke-linecap: round; transition: opacity .18s; pointer-events: none; }
 .link-synergy    { stroke: #4e8f79; }
 .link-dependency { stroke: #5f7fae; stroke-dasharray: 5 4; }
 .link-conflict   { stroke: #b8603f; stroke-dasharray: 2 4; }
@@ -564,6 +564,7 @@ body {
 .target-none { padding: 9px 10px; color: var(--ink-3); font-size: 12px; }
 
 /* ══ 맞물린 원환 배경 ═══════════════════════════════ */
+.brain { pointer-events: none; }
 .orbit { fill: none; }
 .orbit-main  { stroke: rgba(255,255,255,0.085); stroke-width: 1; }
 .orbit-faint { stroke: rgba(255,255,255,0.035); stroke-width: 1; }
@@ -587,16 +588,19 @@ body {
   pointer-events: none;
 }
 
+/* 점등해도 색 정체성은 유지한다 — 위험한 노드가 켜졌는지 알아야 하기 때문이다.
+   흰색은 선택된 노드와 헤일로에만 쓴다. */
 .node.act .node-shape {
-  stroke: #ffffff;
   stroke-width: 2.2;
-  filter: brightness(1.25) saturate(1.1);
+  filter: brightness(1.4) saturate(1.15);
 }
-.node.act .mark-core { fill: #ffffff; fill-opacity: .9; }
-.node.act .mark-outer { stroke: #ffffff; stroke-opacity: .5; }
+.node.act .mark-core { fill-opacity: .95; }
+.node.act .mark-outer { stroke-opacity: .75; }
+
+.node.act-self .mark-outer { stroke: #ffffff; stroke-opacity: .9; }
 .node.act .node-label { fill: var(--ink); opacity: 1; }
 
-.node.act-self .node-shape { stroke-width: 3; filter: brightness(1.4) saturate(1.15); }
+.node.act-self .node-shape { stroke: #ffffff; stroke-width: 3; filter: brightness(1.5); }
 
 @media (prefers-reduced-motion: no-preference) {
   .node.act .halo {
