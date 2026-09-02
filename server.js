@@ -7,6 +7,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const { randomUUID } = require('crypto');
+const { autolink } = require('./tools/autolink.js');
 
 const PORT = process.env.PORT || 4173;
 const ROOT = __dirname;
@@ -79,12 +80,13 @@ async function serveStatic(req, res, urlPath) {
 }
 
 async function getGraph() {
-  const [taxonomy, diagnoses, pledges, links, signals] = await Promise.all([
+  const [taxonomy, diagnoses, pledges, links, signals, org] = await Promise.all([
     readJson('taxonomy.json'),
     readJson('diagnoses.json'),
     readJson('pledges.json'),
     readJson('links.json'),
     readJson('signals.json'),
+    readJson('org.json').catch(() => null),
   ]);
   return {
     taxonomy,
@@ -92,6 +94,7 @@ async function getGraph() {
     pledges: pledges.pledges,
     links: links.links,
     signals: signals.signals,
+    org,
     meta: {
       diagnoses: diagnoses._meta,
       pledges: pledges._meta,
@@ -212,6 +215,99 @@ const routes = {
     file._meta.count = file.diagnoses.length;
     await writeJson('diagnoses.json', file);
     sendJson(res, 201, { diagnosis });
+  },
+
+  /** 신규 정책 초안을 기존 망과 대조만 해본다 (저장하지 않음). */
+  'POST /api/proposals/analyze': async (req, res) => {
+    const body = await readBody(req);
+    if (!body.title) return sendJson(res, 400, { error: 'title 은 필수입니다.' });
+    const [dg, pl, tx] = await Promise.all([
+      readJson('diagnoses.json'), readJson('pledges.json'), readJson('taxonomy.json'),
+    ]);
+    const result = autolink(body, {
+      diagnoses: dg.diagnoses, pledges: pl.pledges, sectors: tx.sectors,
+    });
+    sendJson(res, 200, { analysis: result });
+  },
+
+  /**
+   * 신규 정책을 확정해 망에 편입한다.
+   * 확신이 낮거나 사용자가 보류하면 data/inbox 로 넘겨 Claude Code 가 처리하게 한다.
+   */
+  'POST /api/proposals': async (req, res) => {
+    const body = await readBody(req);
+    if (!body.title) return sendJson(res, 400, { error: 'title 은 필수입니다.' });
+
+    const [dg, pl, tx] = await Promise.all([
+      readJson('diagnoses.json'), readJson('pledges.json'), readJson('taxonomy.json'),
+    ]);
+    const analysis = autolink(body, {
+      diagnoses: dg.diagnoses, pledges: pl.pledges, sectors: tx.sectors,
+    });
+
+    const id = 'PR-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + randomUUID().slice(0, 6);
+    const proposal = {
+      id,
+      createdAt: new Date().toISOString(),
+      title: String(body.title).slice(0, 200),
+      need: String(body.need || '').slice(0, 2000),
+      goal: String(body.goal || '').slice(0, 1000),
+      keywords: Array.isArray(body.keywords) ? body.keywords.slice(0, 12) : [],
+      proposer: String(body.proposer || '').slice(0, 60),
+      sector: body.sector || analysis.sector || null,
+      analysis,
+    };
+
+    const store = await readJson('proposals.json').catch(() => ({
+      _meta: { title: '신규 정책 제안 저장소', notice: '입력된 정책 니즈의 원본이다. 망 편입 여부와 무관하게 모두 남는다.' },
+      proposals: [],
+    }));
+    store.proposals.push(proposal);
+    await writeJson('proposals.json', store);
+
+    const diagIds = new Set(dg.diagnoses.map((d) => d.id));
+    const confirmed = (Array.isArray(body.resolves) ? body.resolves : analysis.resolves.map((r) => r.id))
+      .filter((r) => diagIds.has(r));
+
+    // 섹터가 정해지고 연결 대상이 있으면 즉시 공약 노드로 편입한다
+    if (proposal.sector && confirmed.length && !body.deferToClaude) {
+      const seq = pl.pledges.filter((p) => p.sector === proposal.sector).length + 1;
+      const pledge = {
+        id: `PL-${proposal.sector}-${String(seq).padStart(2, '0')}-${randomUUID().slice(0, 4)}`,
+        sector: proposal.sector,
+        round: null,
+        label: proposal.title,
+        detail: proposal.need || proposal.goal || '',
+        resolves: confirmed,
+        weight: Math.min(10, Math.max(1, Math.round(+body.weight || 6))),
+        kpi: Array.isArray(body.kpi) ? body.kpi.slice(0, 6) : [],
+        origin: { proposalId: id, autoLinked: true, confidence: analysis.confidence },
+      };
+      pl.pledges.push(pledge);
+      await writeJson('pledges.json', pl);
+      proposal.pledgeId = pledge.id;
+      proposal.status = 'linked';
+      await writeJson('proposals.json', store);
+      return sendJson(res, 201, { proposal, pledge, analysis, handedOff: false });
+    }
+
+    // 자동 편입이 어려우면 Claude Code 가 집어갈 수 있게 파일로 남긴다
+    proposal.status = 'pending';
+    await writeJson('proposals.json', store);
+    await fsp.mkdir(path.join(DATA, 'inbox'), { recursive: true });
+    await fsp.writeFile(
+      path.join(DATA, 'inbox', id + '.json'),
+      JSON.stringify({
+        proposal,
+        instruction: '이 정책 제안을 12대 섹터·97개 진단과 대조해 소관 섹터와 해소 대상 진단을 판정하고, tools/link-proposal.js --apply 로 반영하라.',
+        howto: `node tools/link-proposal.js --apply ${id} --sector <Sxx> --resolves <진단ID,진단ID>`,
+      }, null, 2) + String.fromCharCode(10), 'utf8');
+    sendJson(res, 202, { proposal, analysis, handedOff: true, inbox: `data/inbox/${id}.json` });
+  },
+
+  'GET /api/proposals': async (req, res) => {
+    const store = await readJson('proposals.json').catch(() => ({ proposals: [] }));
+    sendJson(res, 200, { proposals: store.proposals });
   },
 
   /** 공약 간 횡단 관계를 추가한다. */

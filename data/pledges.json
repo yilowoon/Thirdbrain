@@ -10,72 +10,690 @@
     "coverageNotice": "resolves 에 한 번도 걸리지 않은 진단은 화면에서 붉게 남는다. 그것이 곧 공약 공백 지점이다."
   },
   "pledges": [
-    { "id": "PL-S02-01", "sector": "S02", "round": 1, "label": "산업클러스터 3대 인프라(인재·용수·전력) 선결", "detail": "인센티브가 아니라 인프라가 클러스터 성패를 가른다는 전제. 초순수·분산전력망·정주여건을 입주 전에 갖춘다.", "resolves": ["S02-02", "S02-06", "S02-09"], "weight": 10,
-      "kpi": [{ "name": "분산 전력망 신증설", "target": 1000, "current": 0, "unit": "MW" }, { "name": "산학연 협력 참여기업", "target": 500, "current": 0, "unit": "개" }] },
-    { "id": "PL-S02-02", "sector": "S02", "round": 1, "label": "초순수(UPW) 기반 반도체·소부장 클러스터 조성", "detail": "국가 초순수 플랫폼센터 유치로 국내 유일 '초순수 자급형 산단' 브랜드 선점.", "resolves": ["S02-02", "S02-06", "S02-10"], "weight": 9 },
-    { "id": "PL-S02-03", "sector": "S02", "round": 1, "label": "집현동 AI로보틱스 R&D강소특구 조성", "detail": "레인보우로보틱스 중심 AI로보틱스 생태계 구축.", "resolves": ["S02-02", "S02-08", "S02-09"], "weight": 9 },
-    { "id": "PL-S02-04", "sector": "S02", "round": 1, "label": "Gov-Tech 창업생태계 조성", "detail": "공공조달과 민간기술을 연계해 행정수도 특성을 창업 자산으로 전환.", "resolves": ["S02-08", "S02-10"], "weight": 8 },
-    { "id": "PL-S02-05", "sector": "S02", "round": 1, "label": "청년 정주기반 완성(주거·창업 원스톱 패키지)", "detail": "주거와 창업 지원을 한 묶음으로 제공해 청년 역외 유출을 막는다.", "resolves": ["S02-03", "S02-08"], "weight": 9 },
-    { "id": "PL-S02-06", "sector": "S02", "round": 1, "label": "24시간 생활권·야간경제 활성화", "detail": "상권의 시간축을 넓혀 공실과 매출 저조를 동시에 겨냥.", "resolves": ["S02-01", "S01-04", "S01-05"], "weight": 7 },
-    { "id": "PL-S02-07", "sector": "S02", "round": 1, "label": "여민전 확대·지역기업 우선조달 제도화", "detail": "역내 소비와 조달을 제도로 묶어 소상공인 매출 기반을 만든다.", "resolves": ["S02-01"], "weight": 7 },
-
-    { "id": "PL-S01-01", "sector": "S01", "round": 2, "label": "세종역 건설", "detail": "국가 교통망 속 고립을 푸는 핵심 결절점.", "resolves": ["S01-01"], "weight": 10 },
-    { "id": "PL-S01-02", "sector": "S01", "round": 2, "label": "광역철도망 확충", "detail": "수도권·충청권 연계로 20분 생활권 실현.", "resolves": ["S01-01", "S01-02"], "weight": 9 },
-    { "id": "PL-S01-03", "sector": "S01", "round": 2, "label": "BRT 고도화", "detail": "정부청사 접근성과 간선 수송력을 함께 끌어올린다.", "resolves": ["S01-02"], "weight": 8 },
-    { "id": "PL-S01-04", "sector": "S01", "round": 2, "label": "읍면지역 생활교통 확대", "detail": "대중교통 소외지역의 시간대·노선 공백 해소.", "resolves": ["S01-03", "S01-06"], "weight": 8 },
-    { "id": "PL-S01-05", "sector": "S01", "round": 2, "label": "스마트시티 시민체감 강화", "detail": "시범사업의 기술 성과를 생활 체감으로 전환.", "resolves": ["S01-10", "S10-01"], "weight": 7 },
-
-    { "id": "PL-S05-01", "sector": "S05", "round": 3, "label": "KAIST 세종캠퍼스 및 정부출연연 분소 유치", "detail": "지역 내 대학 부재라는 구조적 결손을 정면으로 겨냥.", "resolves": ["S05-05", "S05-06", "S02-09"], "weight": 10 },
-    { "id": "PL-S05-02", "sector": "S05", "round": 3, "label": "특성화고 육성", "detail": "맞춤형·특성화 교육 기회를 넓혀 역외 전학 유인을 줄인다.", "resolves": ["S05-01", "S05-02"], "weight": 8 },
-    { "id": "PL-S05-03", "sector": "S05", "round": 3, "label": "산학연 연계 강화", "detail": "대학·출연연·기업을 잇는 연구-산업 파이프라인.", "resolves": ["S05-06", "S02-09"], "weight": 8 },
-    { "id": "PL-S05-04", "sector": "S05", "round": 3, "label": "AI·로보틱스 인재양성 아카데미", "detail": "전략산업과 인재양성을 같은 축에 놓는다.", "resolves": ["S05-08", "S02-03"], "weight": 8 },
-
-    { "id": "PL-S04-01", "sector": "S04", "round": 4, "label": "문화콘텐츠산업 육성", "detail": "콘텐츠 사업체 692개(전국 0.6%)의 영세성을 산업 규모로 전환. 앵커기업 유치와 글로벌 유통망 구축.", "resolves": ["S04-03", "S04-04", "S02-10"], "weight": 10,
-      "kpi": [{ "name": "콘텐츠 사업체 수", "target": 1520, "current": 692, "unit": "개" }, { "name": "콘텐츠 산업 종사자", "target": 8500, "current": 2654, "unit": "명" }, { "name": "콘텐츠 산업 매출액", "target": 15000, "current": 2496, "unit": "억원" }] },
-    { "id": "PL-S04-02", "sector": "S04", "round": 4, "label": "세종콘텐츠진흥원(SCA) 설립", "detail": "문화산업진흥 전담기구 부재를 해소하는 제도적 중심.", "resolves": ["S04-03", "S04-02"], "weight": 9 },
-    { "id": "PL-S04-03", "sector": "S04", "round": 4, "label": "세종 디지털미디어단지(SDMC) 조성", "detail": "월산산단 일원. 공공 미디어 허브·국제 문화교류 플랫폼·미래 미디어 거점 3대 축.", "resolves": ["S04-01", "S04-04"], "weight": 9 },
-    { "id": "PL-S04-04", "sector": "S04", "round": 4, "label": "각국 문화원 유치", "detail": "외교부 이전과 연계한 문화외교 자산화.", "resolves": ["S04-05", "S11-04"], "weight": 8 },
-    { "id": "PL-S04-05", "sector": "S04", "round": 4, "label": "국제문화거리 조성", "detail": "일회성 행사 의존에서 상설 문화공간으로 전환.", "resolves": ["S04-05", "S11-04"], "weight": 7 },
-
-    { "id": "PL-S07-01", "sector": "S07", "round": 5, "label": "상급종합병원 유치", "detail": "대전·청주 원정 진료 구조를 끊는 핵심 과제.", "resolves": ["S07-01", "S07-03"], "weight": 10 },
-    { "id": "PL-S07-02", "sector": "S07", "round": 5, "label": "응급의료 체계 강화", "detail": "중증환자 이송의 골든타임 확보.", "resolves": ["S07-02"], "weight": 10 },
-    { "id": "PL-S07-03", "sector": "S07", "round": 5, "label": "바이오의약품 클러스터 조성", "detail": "의료 인프라와 산업을 함께 키우는 이중 효과.", "resolves": ["S07-08", "S02-02"], "weight": 8 },
-    { "id": "PL-S07-04", "sector": "S07", "round": 5, "label": "의과대학 설립 추진", "detail": "의료 인력 유치 한계의 근본 해법.", "resolves": ["S07-07", "S05-05"], "weight": 9 },
-
-    { "id": "PL-S06-01", "sector": "S06", "round": 6, "label": "경력단절여성 재취업 지원", "detail": "돌봄과 고용을 연결하는 통합 설계.", "resolves": ["S06-02", "S02-04"], "weight": 8 },
-    { "id": "PL-S06-02", "sector": "S06", "round": 6, "label": "청년복지 확대", "detail": "주거·일자리·문화를 묶은 청년 정착 패키지.", "resolves": ["S06-03", "S02-03"], "weight": 8 },
-    { "id": "PL-S06-03", "sector": "S06", "round": 6, "label": "고령화 대응 실버일자리", "detail": "고령화를 복지 비용이 아니라 노동 자원으로 전환.", "resolves": ["S06-01", "S02-05"], "weight": 8 },
-    { "id": "PL-S06-04", "sector": "S06", "round": 6, "label": "신구도심 균형발전", "detail": "서비스 전달체계의 지역 격차 해소.", "resolves": ["S06-05", "S01-08"], "weight": 9 },
-
-    { "id": "PL-S09-01", "sector": "S09", "round": 7, "label": "스마트팜 확대", "detail": "기후변화 대응과 생산성 확보를 동시에.", "resolves": ["S09-05", "S09-02"], "weight": 8 },
-    { "id": "PL-S09-02", "sector": "S09", "round": 7, "label": "로컬푸드 직매장 활성화", "detail": "도농상생의 실질 유통 경로.", "resolves": ["S09-06", "S09-04"], "weight": 8 },
-    { "id": "PL-S09-03", "sector": "S09", "round": 7, "label": "청년농업인 육성", "detail": "농촌 고령화와 후계 단절에 대한 직접 대응.", "resolves": ["S09-01"], "weight": 8 },
-    { "id": "PL-S09-04", "sector": "S09", "round": 7, "label": "도시농업 교육·관광 융합", "detail": "농업을 교육·관광 산업과 결합한 미래도시농업 전략.", "resolves": ["S09-07", "S09-08"], "weight": 7 },
-
-    { "id": "PL-S08-01", "sector": "S08", "round": 8, "label": "탄소중립 로드맵 수립", "detail": "구호에 그친 녹색행정도시를 실행계획으로 전환.", "resolves": ["S08-02", "S08-06", "S08-08"], "weight": 9 },
-    { "id": "PL-S08-02", "sector": "S08", "round": 8, "label": "그린뉴딜 산업단지 조성", "detail": "환경 규제를 산업 기회로 바꾸는 접근.", "resolves": ["S08-06", "S02-02"], "weight": 8 },
-    { "id": "PL-S08-03", "sector": "S08", "round": 8, "label": "재생에너지 확대", "detail": "분산형 전력망과 연계한 에너지 전환.", "resolves": ["S08-06", "S08-07"], "weight": 8 },
-    { "id": "PL-S08-04", "sector": "S08", "round": 8, "label": "순환경제 생태계 구축", "detail": "자원 순환을 산업 구조로 정착.", "resolves": ["S08-02"], "weight": 7 },
-
-    { "id": "PL-S10-01", "sector": "S10", "round": 9, "label": "AI반도체 설계 클러스터", "detail": "전략산업 선정의 지역 정합성을 확보한 재설계.", "resolves": ["S10-03", "S02-06"], "weight": 9 },
-    { "id": "PL-S10-02", "sector": "S10", "round": 9, "label": "데이터센터 허브 조성", "detail": "분산 전력망 확보와 함께 가는 디지털 기반시설.", "resolves": ["S10-04", "S02-02"], "weight": 8 },
-    { "id": "PL-S10-03", "sector": "S10", "round": 9, "label": "공공데이터 리서치파크 건립", "detail": "지식서비스산업 규제자유특구와 묶어 행정수도 데이터를 산업 자산으로.", "resolves": ["S10-04", "S10-05"], "weight": 9 },
-    { "id": "PL-S10-04", "sector": "S10", "round": 9, "label": "AI전자정부 실증 테스트베드 구축", "detail": "중앙행정기관 집적이라는 세종 고유 조건을 실증 자산으로 전환.", "resolves": ["S10-05", "S03-04"], "weight": 9 },
-    { "id": "PL-S10-05", "sector": "S10", "round": 9, "label": "디지털 트윈 세종", "detail": "도시공간 관리와 재난예측의 공통 기반.", "resolves": ["S10-01", "S01-09", "S12-04"], "weight": 8 },
-
-    { "id": "PL-S11-01", "sector": "S11", "round": 10, "label": "외교부 이전 연계 각국 문화원 집적", "detail": "20개국 문화원 유치로 동아시아 문화외교 중심지화.", "resolves": ["S11-01", "S11-04"], "weight": 9 },
-    { "id": "PL-S11-02", "sector": "S11", "round": 10, "label": "국제컨벤션센터 건립", "detail": "국제 행사 수용 기반 확보.", "resolves": ["S11-01", "S11-05"], "weight": 8 },
-    { "id": "PL-S11-03", "sector": "S11", "round": 10, "label": "국제학교 확대", "detail": "외국인 정주환경의 핵심 결손 보완.", "resolves": ["S11-02", "S11-03"], "weight": 8 },
-    { "id": "PL-S11-04", "sector": "S11", "round": 10, "label": "글로벌 인재 유치", "detail": "정주·교육 여건과 묶은 인재 확보 전략.", "resolves": ["S11-02", "S05-08"], "weight": 8 },
-
-    { "id": "PL-S12-01", "sector": "S12", "round": 11, "label": "스마트 통합관제센터 구축", "detail": "분산된 재난 대응 기능을 하나의 컨트롤타워로.", "resolves": ["S12-04", "S12-01"], "weight": 9 },
-    { "id": "PL-S12-02", "sector": "S12", "round": 11, "label": "안전산업 클러스터 조성", "detail": "안전 수요를 산업으로 전환.", "resolves": ["S12-05", "S02-02"], "weight": 7 },
-    { "id": "PL-S12-03", "sector": "S12", "round": 11, "label": "재난예측 AI 시스템", "detail": "사후 대응에서 사전 예측으로 전환.", "resolves": ["S12-03", "S12-06"], "weight": 9 },
-    { "id": "PL-S12-04", "sector": "S12", "round": 11, "label": "소방·구급 인프라 확충", "detail": "신도시 확장 속도에 못 미친 대응 자원 보강.", "resolves": ["S12-02", "S07-02"], "weight": 9 },
-
-    { "id": "PL-S03-01", "sector": "S03", "round": 12, "label": "국회 세종의사당 건립 가속화", "detail": "완전한 입법 기능 확보. 행정수도 완성의 최우선 축.", "resolves": ["S03-02", "S03-01"], "weight": 10 },
-    { "id": "PL-S03-02", "sector": "S03", "round": 12, "label": "시민참여 거버넌스 강화", "detail": "관 주도 의사결정 구조의 전환.", "resolves": ["S03-05", "S03-07"], "weight": 8 },
-    { "id": "PL-S03-03", "sector": "S03", "round": 12, "label": "행정수도 완성 로드맵 수립", "detail": "대법원 등 핵심기관 이전을 포함한 3권 분립 실현 경로.", "resolves": ["S03-01", "S03-03", "S03-06"], "weight": 10 },
-    { "id": "PL-S03-04", "sector": "S03", "round": 12, "label": "표준화 비즈니스 허브 조성", "detail": "행정 집적을 경제 기능으로 환산하는 장치.", "resolves": ["S03-04", "S02-10"], "weight": 7 }
+    {
+      "id": "PL-S02-01",
+      "sector": "S02",
+      "round": 1,
+      "label": "산업클러스터 3대 인프라(인재·용수·전력) 선결",
+      "detail": "인센티브가 아니라 인프라가 클러스터 성패를 가른다는 전제. 초순수·분산전력망·정주여건을 입주 전에 갖춘다.",
+      "resolves": [
+        "S02-02",
+        "S02-06",
+        "S02-09"
+      ],
+      "weight": 10,
+      "kpi": [
+        {
+          "name": "분산 전력망 신증설",
+          "target": 1000,
+          "current": 0,
+          "unit": "MW"
+        },
+        {
+          "name": "산학연 협력 참여기업",
+          "target": 500,
+          "current": 0,
+          "unit": "개"
+        }
+      ]
+    },
+    {
+      "id": "PL-S02-02",
+      "sector": "S02",
+      "round": 1,
+      "label": "초순수(UPW) 기반 반도체·소부장 클러스터 조성",
+      "detail": "국가 초순수 플랫폼센터 유치로 국내 유일 '초순수 자급형 산단' 브랜드 선점.",
+      "resolves": [
+        "S02-02",
+        "S02-06",
+        "S02-10"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S02-03",
+      "sector": "S02",
+      "round": 1,
+      "label": "집현동 AI로보틱스 R&D강소특구 조성",
+      "detail": "레인보우로보틱스 중심 AI로보틱스 생태계 구축.",
+      "resolves": [
+        "S02-02",
+        "S02-08",
+        "S02-09"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S02-04",
+      "sector": "S02",
+      "round": 1,
+      "label": "Gov-Tech 창업생태계 조성",
+      "detail": "공공조달과 민간기술을 연계해 행정수도 특성을 창업 자산으로 전환.",
+      "resolves": [
+        "S02-08",
+        "S02-10"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S02-05",
+      "sector": "S02",
+      "round": 1,
+      "label": "청년 정주기반 완성(주거·창업 원스톱 패키지)",
+      "detail": "주거와 창업 지원을 한 묶음으로 제공해 청년 역외 유출을 막는다.",
+      "resolves": [
+        "S02-03",
+        "S02-08"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S02-06",
+      "sector": "S02",
+      "round": 1,
+      "label": "24시간 생활권·야간경제 활성화",
+      "detail": "상권의 시간축을 넓혀 공실과 매출 저조를 동시에 겨냥.",
+      "resolves": [
+        "S02-01",
+        "S01-04",
+        "S01-05"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S02-07",
+      "sector": "S02",
+      "round": 1,
+      "label": "여민전 확대·지역기업 우선조달 제도화",
+      "detail": "역내 소비와 조달을 제도로 묶어 소상공인 매출 기반을 만든다.",
+      "resolves": [
+        "S02-01"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S01-01",
+      "sector": "S01",
+      "round": 2,
+      "label": "세종역 건설",
+      "detail": "국가 교통망 속 고립을 푸는 핵심 결절점.",
+      "resolves": [
+        "S01-01"
+      ],
+      "weight": 10
+    },
+    {
+      "id": "PL-S01-02",
+      "sector": "S01",
+      "round": 2,
+      "label": "광역철도망 확충",
+      "detail": "수도권·충청권 연계로 20분 생활권 실현.",
+      "resolves": [
+        "S01-01",
+        "S01-02"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S01-03",
+      "sector": "S01",
+      "round": 2,
+      "label": "BRT 고도화",
+      "detail": "정부청사 접근성과 간선 수송력을 함께 끌어올린다.",
+      "resolves": [
+        "S01-02"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S01-04",
+      "sector": "S01",
+      "round": 2,
+      "label": "읍면지역 생활교통 확대",
+      "detail": "대중교통 소외지역의 시간대·노선 공백 해소.",
+      "resolves": [
+        "S01-03",
+        "S01-06"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S01-05",
+      "sector": "S01",
+      "round": 2,
+      "label": "스마트시티 시민체감 강화",
+      "detail": "시범사업의 기술 성과를 생활 체감으로 전환.",
+      "resolves": [
+        "S01-10",
+        "S10-01"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S05-01",
+      "sector": "S05",
+      "round": 3,
+      "label": "KAIST 세종캠퍼스 및 정부출연연 분소 유치",
+      "detail": "지역 내 대학 부재라는 구조적 결손을 정면으로 겨냥.",
+      "resolves": [
+        "S05-05",
+        "S05-06",
+        "S02-09"
+      ],
+      "weight": 10
+    },
+    {
+      "id": "PL-S05-02",
+      "sector": "S05",
+      "round": 3,
+      "label": "특성화고 육성",
+      "detail": "맞춤형·특성화 교육 기회를 넓혀 역외 전학 유인을 줄인다.",
+      "resolves": [
+        "S05-01",
+        "S05-02"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S05-03",
+      "sector": "S05",
+      "round": 3,
+      "label": "산학연 연계 강화",
+      "detail": "대학·출연연·기업을 잇는 연구-산업 파이프라인.",
+      "resolves": [
+        "S05-06",
+        "S02-09"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S05-04",
+      "sector": "S05",
+      "round": 3,
+      "label": "AI·로보틱스 인재양성 아카데미",
+      "detail": "전략산업과 인재양성을 같은 축에 놓는다.",
+      "resolves": [
+        "S05-08",
+        "S02-03"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S04-01",
+      "sector": "S04",
+      "round": 4,
+      "label": "문화콘텐츠산업 육성",
+      "detail": "콘텐츠 사업체 692개(전국 0.6%)의 영세성을 산업 규모로 전환. 앵커기업 유치와 글로벌 유통망 구축.",
+      "resolves": [
+        "S04-03",
+        "S04-04",
+        "S02-10"
+      ],
+      "weight": 10,
+      "kpi": [
+        {
+          "name": "콘텐츠 사업체 수",
+          "target": 1520,
+          "current": 692,
+          "unit": "개"
+        },
+        {
+          "name": "콘텐츠 산업 종사자",
+          "target": 8500,
+          "current": 2654,
+          "unit": "명"
+        },
+        {
+          "name": "콘텐츠 산업 매출액",
+          "target": 15000,
+          "current": 2496,
+          "unit": "억원"
+        }
+      ]
+    },
+    {
+      "id": "PL-S04-02",
+      "sector": "S04",
+      "round": 4,
+      "label": "세종콘텐츠진흥원(SCA) 설립",
+      "detail": "문화산업진흥 전담기구 부재를 해소하는 제도적 중심.",
+      "resolves": [
+        "S04-03",
+        "S04-02"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S04-03",
+      "sector": "S04",
+      "round": 4,
+      "label": "세종 디지털미디어단지(SDMC) 조성",
+      "detail": "월산산단 일원. 공공 미디어 허브·국제 문화교류 플랫폼·미래 미디어 거점 3대 축.",
+      "resolves": [
+        "S04-01",
+        "S04-04"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S04-04",
+      "sector": "S04",
+      "round": 4,
+      "label": "각국 문화원 유치",
+      "detail": "외교부 이전과 연계한 문화외교 자산화.",
+      "resolves": [
+        "S04-05",
+        "S11-04"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S04-05",
+      "sector": "S04",
+      "round": 4,
+      "label": "국제문화거리 조성",
+      "detail": "일회성 행사 의존에서 상설 문화공간으로 전환.",
+      "resolves": [
+        "S04-05",
+        "S11-04"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S07-01",
+      "sector": "S07",
+      "round": 5,
+      "label": "상급종합병원 유치",
+      "detail": "대전·청주 원정 진료 구조를 끊는 핵심 과제.",
+      "resolves": [
+        "S07-01",
+        "S07-03"
+      ],
+      "weight": 10
+    },
+    {
+      "id": "PL-S07-02",
+      "sector": "S07",
+      "round": 5,
+      "label": "응급의료 체계 강화",
+      "detail": "중증환자 이송의 골든타임 확보.",
+      "resolves": [
+        "S07-02"
+      ],
+      "weight": 10
+    },
+    {
+      "id": "PL-S07-03",
+      "sector": "S07",
+      "round": 5,
+      "label": "바이오의약품 클러스터 조성",
+      "detail": "의료 인프라와 산업을 함께 키우는 이중 효과.",
+      "resolves": [
+        "S07-08",
+        "S02-02"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S07-04",
+      "sector": "S07",
+      "round": 5,
+      "label": "의과대학 설립 추진",
+      "detail": "의료 인력 유치 한계의 근본 해법.",
+      "resolves": [
+        "S07-07",
+        "S05-05"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S06-01",
+      "sector": "S06",
+      "round": 6,
+      "label": "경력단절여성 재취업 지원",
+      "detail": "돌봄과 고용을 연결하는 통합 설계.",
+      "resolves": [
+        "S06-02",
+        "S02-04"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S06-02",
+      "sector": "S06",
+      "round": 6,
+      "label": "청년복지 확대",
+      "detail": "주거·일자리·문화를 묶은 청년 정착 패키지.",
+      "resolves": [
+        "S06-03",
+        "S02-03"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S06-03",
+      "sector": "S06",
+      "round": 6,
+      "label": "고령화 대응 실버일자리",
+      "detail": "고령화를 복지 비용이 아니라 노동 자원으로 전환.",
+      "resolves": [
+        "S06-01",
+        "S02-05"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S06-04",
+      "sector": "S06",
+      "round": 6,
+      "label": "신구도심 균형발전",
+      "detail": "서비스 전달체계의 지역 격차 해소.",
+      "resolves": [
+        "S06-05",
+        "S01-08"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S09-01",
+      "sector": "S09",
+      "round": 7,
+      "label": "스마트팜 확대",
+      "detail": "기후변화 대응과 생산성 확보를 동시에.",
+      "resolves": [
+        "S09-05",
+        "S09-02"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S09-02",
+      "sector": "S09",
+      "round": 7,
+      "label": "로컬푸드 직매장 활성화",
+      "detail": "도농상생의 실질 유통 경로.",
+      "resolves": [
+        "S09-06",
+        "S09-04"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S09-03",
+      "sector": "S09",
+      "round": 7,
+      "label": "청년농업인 육성",
+      "detail": "농촌 고령화와 후계 단절에 대한 직접 대응.",
+      "resolves": [
+        "S09-01"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S09-04",
+      "sector": "S09",
+      "round": 7,
+      "label": "도시농업 교육·관광 융합",
+      "detail": "농업을 교육·관광 산업과 결합한 미래도시농업 전략.",
+      "resolves": [
+        "S09-07",
+        "S09-08"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S08-01",
+      "sector": "S08",
+      "round": 8,
+      "label": "탄소중립 로드맵 수립",
+      "detail": "구호에 그친 녹색행정도시를 실행계획으로 전환.",
+      "resolves": [
+        "S08-02",
+        "S08-06",
+        "S08-08"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S08-02",
+      "sector": "S08",
+      "round": 8,
+      "label": "그린뉴딜 산업단지 조성",
+      "detail": "환경 규제를 산업 기회로 바꾸는 접근.",
+      "resolves": [
+        "S08-06",
+        "S02-02"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S08-03",
+      "sector": "S08",
+      "round": 8,
+      "label": "재생에너지 확대",
+      "detail": "분산형 전력망과 연계한 에너지 전환.",
+      "resolves": [
+        "S08-06",
+        "S08-07"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S08-04",
+      "sector": "S08",
+      "round": 8,
+      "label": "순환경제 생태계 구축",
+      "detail": "자원 순환을 산업 구조로 정착.",
+      "resolves": [
+        "S08-02"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S10-01",
+      "sector": "S10",
+      "round": 9,
+      "label": "AI반도체 설계 클러스터",
+      "detail": "전략산업 선정의 지역 정합성을 확보한 재설계.",
+      "resolves": [
+        "S10-03",
+        "S02-06"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S10-02",
+      "sector": "S10",
+      "round": 9,
+      "label": "데이터센터 허브 조성",
+      "detail": "분산 전력망 확보와 함께 가는 디지털 기반시설.",
+      "resolves": [
+        "S10-04",
+        "S02-02"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S10-03",
+      "sector": "S10",
+      "round": 9,
+      "label": "공공데이터 리서치파크 건립",
+      "detail": "지식서비스산업 규제자유특구와 묶어 행정수도 데이터를 산업 자산으로.",
+      "resolves": [
+        "S10-04",
+        "S10-05"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S10-04",
+      "sector": "S10",
+      "round": 9,
+      "label": "AI전자정부 실증 테스트베드 구축",
+      "detail": "중앙행정기관 집적이라는 세종 고유 조건을 실증 자산으로 전환.",
+      "resolves": [
+        "S10-05",
+        "S03-04"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S10-05",
+      "sector": "S10",
+      "round": 9,
+      "label": "디지털 트윈 세종",
+      "detail": "도시공간 관리와 재난예측의 공통 기반.",
+      "resolves": [
+        "S10-01",
+        "S01-09",
+        "S12-04"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S11-01",
+      "sector": "S11",
+      "round": 10,
+      "label": "외교부 이전 연계 각국 문화원 집적",
+      "detail": "20개국 문화원 유치로 동아시아 문화외교 중심지화.",
+      "resolves": [
+        "S11-01",
+        "S11-04"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S11-02",
+      "sector": "S11",
+      "round": 10,
+      "label": "국제컨벤션센터 건립",
+      "detail": "국제 행사 수용 기반 확보.",
+      "resolves": [
+        "S11-01",
+        "S11-05"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S11-03",
+      "sector": "S11",
+      "round": 10,
+      "label": "국제학교 확대",
+      "detail": "외국인 정주환경의 핵심 결손 보완.",
+      "resolves": [
+        "S11-02",
+        "S11-03"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S11-04",
+      "sector": "S11",
+      "round": 10,
+      "label": "글로벌 인재 유치",
+      "detail": "정주·교육 여건과 묶은 인재 확보 전략.",
+      "resolves": [
+        "S11-02",
+        "S05-08"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S12-01",
+      "sector": "S12",
+      "round": 11,
+      "label": "스마트 통합관제센터 구축",
+      "detail": "분산된 재난 대응 기능을 하나의 컨트롤타워로.",
+      "resolves": [
+        "S12-04",
+        "S12-01"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S12-02",
+      "sector": "S12",
+      "round": 11,
+      "label": "안전산업 클러스터 조성",
+      "detail": "안전 수요를 산업으로 전환.",
+      "resolves": [
+        "S12-05",
+        "S02-02"
+      ],
+      "weight": 7
+    },
+    {
+      "id": "PL-S12-03",
+      "sector": "S12",
+      "round": 11,
+      "label": "재난예측 AI 시스템",
+      "detail": "사후 대응에서 사전 예측으로 전환.",
+      "resolves": [
+        "S12-03",
+        "S12-06"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S12-04",
+      "sector": "S12",
+      "round": 11,
+      "label": "소방·구급 인프라 확충",
+      "detail": "신도시 확장 속도에 못 미친 대응 자원 보강.",
+      "resolves": [
+        "S12-02",
+        "S07-02"
+      ],
+      "weight": 9
+    },
+    {
+      "id": "PL-S03-01",
+      "sector": "S03",
+      "round": 12,
+      "label": "국회 세종의사당 건립 가속화",
+      "detail": "완전한 입법 기능 확보. 행정수도 완성의 최우선 축.",
+      "resolves": [
+        "S03-02",
+        "S03-01"
+      ],
+      "weight": 10
+    },
+    {
+      "id": "PL-S03-02",
+      "sector": "S03",
+      "round": 12,
+      "label": "시민참여 거버넌스 강화",
+      "detail": "관 주도 의사결정 구조의 전환.",
+      "resolves": [
+        "S03-05",
+        "S03-07"
+      ],
+      "weight": 8
+    },
+    {
+      "id": "PL-S03-03",
+      "sector": "S03",
+      "round": 12,
+      "label": "행정수도 완성 로드맵 수립",
+      "detail": "대법원 등 핵심기관 이전을 포함한 3권 분립 실현 경로.",
+      "resolves": [
+        "S03-01",
+        "S03-03",
+        "S03-06"
+      ],
+      "weight": 10
+    },
+    {
+      "id": "PL-S03-04",
+      "sector": "S03",
+      "round": 12,
+      "label": "표준화 비즈니스 허브 조성",
+      "detail": "행정 집적을 경제 기능으로 환산하는 장치.",
+      "resolves": [
+        "S03-04",
+        "S02-10"
+      ],
+      "weight": 7
+    }
   ]
 }

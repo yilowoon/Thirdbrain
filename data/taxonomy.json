@@ -19,25 +19,25 @@
       "id": "D1",
       "label": "공간·환경·농업",
       "en": "Space, Environment & Agriculture",
-      "color": "#199d78"
+      "color": "#8f7139"
     },
     {
       "id": "D2",
       "label": "경제·산업·기술",
       "en": "Economy, Industry & Technology",
-      "color": "#bc872f"
+      "color": "#aa8641"
     },
     {
       "id": "D3",
       "label": "시민의 삶",
       "en": "Citizens' Life",
-      "color": "#3c7ebe"
+      "color": "#c59b49"
     },
     {
       "id": "D4",
       "label": "도시위상·문화·안전",
       "en": "Status, Culture & Safety",
-      "color": "#9b5a8e"
+      "color": "#e2b151"
     }
   ],
   "sectors": [
@@ -46,112 +46,112 @@
       "no": 1,
       "domain": "D1",
       "label": "도시 인프라·정주환경",
-      "color": "#35ae88"
+      "color": "#8f7139"
     },
     {
       "id": "S08",
       "no": 8,
       "domain": "D1",
       "label": "환경·지속가능성",
-      "color": "#199d78"
+      "color": "#aa8641"
     },
     {
       "id": "S09",
       "no": 9,
       "domain": "D1",
       "label": "농업·도농상생·미래도시농업",
-      "color": "#0c8a69"
+      "color": "#c59b49"
     },
     {
       "id": "S02",
       "no": 2,
       "domain": "D2",
       "label": "경제·산업·자족기능",
-      "color": "#ce9843"
+      "color": "#e2b151"
     },
     {
       "id": "S10",
       "no": 10,
       "domain": "D2",
       "label": "과학기술·디지털 혁신",
-      "color": "#bc872f"
+      "color": "#8f7139"
     },
     {
       "id": "S11",
       "no": 11,
       "domain": "D2",
       "label": "국제화·글로벌 도시 전략",
-      "color": "#aa7617"
+      "color": "#aa8641"
     },
     {
       "id": "S05",
       "no": 5,
       "domain": "D3",
       "label": "교육·인재양성",
-      "color": "#4d8fd0"
+      "color": "#c59b49"
     },
     {
       "id": "S06",
       "no": 6,
       "domain": "D3",
       "label": "복지·사회문제",
-      "color": "#3c7ebe"
+      "color": "#e2b151"
     },
     {
       "id": "S07",
       "no": 7,
       "domain": "D3",
       "label": "보건·의료서비스",
-      "color": "#2a6dac"
+      "color": "#8f7139"
     },
     {
       "id": "S03",
       "no": 3,
       "domain": "D4",
       "label": "행정수도·정치 거버넌스",
-      "color": "#ad6a9f"
+      "color": "#aa8641"
     },
     {
       "id": "S04",
       "no": 4,
       "domain": "D4",
       "label": "문화·예술·도시정체성",
-      "color": "#9b5a8e"
+      "color": "#c59b49"
     },
     {
       "id": "S12",
       "no": 12,
       "domain": "D4",
       "label": "안전·재난관리",
-      "color": "#8a4a7d"
+      "color": "#e2b151"
     }
   ],
   "status": [
     {
       "id": "good",
       "label": "관리 가능",
-      "color": "#628c6a",
+      "color": "#8f7139",
       "icon": "●",
       "desc": "잔여위험 44 미만"
     },
     {
       "id": "warning",
       "label": "주의",
-      "color": "#d4a73e",
+      "color": "#c59b49",
       "icon": "▲",
       "desc": "잔여위험 44~57"
     },
     {
       "id": "serious",
       "label": "경계",
-      "color": "#de602f",
+      "color": "#e2b151",
       "icon": "◆",
       "desc": "잔여위험 58~71"
     },
     {
       "id": "critical",
       "label": "위험",
-      "color": "#d42f37",
+      "color": "#e13b86",
       "icon": "■",
       "desc": "잔여위험 72 이상 — 구조적 심각도가 높은데 대응이 없거나 얇은 지점"
     }

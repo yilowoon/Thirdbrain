@@ -16,17 +16,20 @@
   --ink-2:       #a8a6a0;
   --ink-3:       #6f6d69;
 
-  /* 4대 정책 영역 — 저채도 주얼톤 */
-  --d1: #199d78;  /* 공간·환경·농업     제이드 */
-  --d2: #bc872f;  /* 경제·산업·기술     앤티크 골드 */
-  --d3: #3c7ebe;  /* 시민의 삶          스틸 블루 */
-  --d4: #9b5a8e;  /* 도시위상·문화·안전 뮤트 오키드 */
+  /* 골드 시퀀셜 램프 — 값이 클수록 밝다 */
+  --g0: #5c4a28;  --g1: #755d31;  --g2: #8f7139;  --g3: #aa8641;
+  --g4: #c59b49;  --g5: #e2b151;  --g6: #ffc75a;
+  --gold: #c59b49;
 
-  /* 상태 — 위험 히트 램프. 적색은 위험 전용 */
-  --st-good:     #628c6a;
-  --st-warning:  #d4a73e;
-  --st-serious:  #de602f;
-  --st-critical: #d42f37;
+  /* 연결(점등) — 블루 */
+  --connect:    #43acfb;
+  --connect-hi: #76c7ff;
+
+  /* 상태 */
+  --st-good:     #8f7139;
+  --st-warning:  #c59b49;
+  --st-serious:  #e2b151;
+  --st-critical: #e13b86;   /* 위험 — 골드와 색각이상 ΔE 8.9 로 분리된 유일한 붉은 계열 */
 
   --radius: 10px;
   --font: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
@@ -65,7 +68,15 @@ body {
   border-bottom: 1px solid var(--hairline);
 }
 
-.brand { display: flex; align-items: center; gap: 11px; }
+.brand {
+  display: flex; align-items: center; gap: 11px;
+  background: none; border: 0; padding: 0;
+  color: inherit; font: inherit; text-align: left;
+  cursor: pointer; border-radius: 8px;
+}
+.brand:hover .brand-text strong { color: var(--connect-hi); }
+.brand:hover .brand-mark::before, .brand:hover .brand-mark::after { border-color: var(--connect); }
+.brand:focus-visible { outline: 2px solid var(--connect); outline-offset: 3px; }
 
 .brand-mark {
   width: 30px; height: 22px; flex: none;
@@ -243,15 +254,18 @@ body {
 #graph.is-panning { cursor: grabbing; }
 
 /* ── 그래프 요소 ────────────────────────────────────── */
-.link { fill: none; stroke-linecap: round; transition: opacity .18s; pointer-events: none; }
-.link-synergy    { stroke: #4e8f79; }
-.link-dependency { stroke: #5f7fae; stroke-dasharray: 5 4; }
-.link-conflict   { stroke: #b8603f; stroke-dasharray: 2 4; }
-.link-converge   { stroke: rgba(255,255,255,0.14); }
+/* 연결선은 양끝 굵기가 다른 채움 도형이다. 색은 양끝 노드를 잇는 그라데이션이 맡는다. */
+.link { stroke: none; pointer-events: none; transition: opacity .18s; }
+
+/* 관계 유형은 중심선 패턴으로 구분한다 */
+.link-mark { pointer-events: none; fill: none; transition: opacity .18s; }
+.mark-dependency { stroke: rgba(255,255,255,0.30); stroke-width: 0.8; stroke-dasharray: 6 5; }
+.mark-conflict   { stroke: var(--st-critical); stroke-width: 1.1; stroke-dasharray: 2 4; stroke-opacity: .85; }
 
 .node { cursor: pointer; }
 .node-shape { transition: opacity .18s, stroke-width .18s; }
 .mark-core { transition: r .22s ease, fill-opacity .18s; pointer-events: none; }
+.node-diagnosis .mark-core { mix-blend-mode: screen; }
 .mark-outer { pointer-events: none; }
 
 .node-label {
@@ -265,6 +279,7 @@ body {
   stroke-width: 3.5px;
   stroke-linejoin: round;
 }
+.node-label-sm { fill: var(--ink-3); stroke-width: 3px; }
 .node-label-md { font-size: 11px; font-weight: 500; fill: var(--ink-2); letter-spacing: .02em; }
 .node-label-lg { font-size: 12.5px; font-weight: 500; fill: var(--ink); letter-spacing: .06em; }
 .node-label-xl { font-size: 13.5px; font-weight: 500; fill: var(--ink); letter-spacing: .10em; }
@@ -523,7 +538,8 @@ body {
 /* 필터 칩의 모양 표식 — 진단은 원, 공약은 사각 */
 .chip-shape { width: 9px; height: 9px; flex: none; background: var(--ink-2); }
 .chip-diagnosis { border-radius: 50%; }
-.chip-pledge { border-radius: 2px; }
+.chip-pledge { border-radius: 2px; transform: rotate(45deg) scale(.85); }
+.chip-org { border-radius: 2px; background: none; border: 1.4px solid var(--ink-2); }
 
 .legend-circle { background: var(--ink-2); border-radius: 50%; }
 .legend-square { background: var(--ink-2); border-radius: 2px; }
@@ -580,7 +596,7 @@ body {
 /* ══ 점등(신경 발화) ════════════════════════════════ */
 .halo {
   fill: none;
-  stroke: #fff;
+  stroke: var(--connect-hi);
   stroke-width: 2;
   opacity: 0;
   transform-box: fill-box;
@@ -588,35 +604,35 @@ body {
   pointer-events: none;
 }
 
-/* 점등해도 색 정체성은 유지한다 — 위험한 노드가 켜졌는지 알아야 하기 때문이다.
-   흰색은 선택된 노드와 헤일로에만 쓴다. */
-.node.act .node-shape {
-  stroke-width: 2.2;
-  filter: brightness(1.4) saturate(1.15);
+/* 연결되면 골드에서 블루로 물든다. 위험 노드는 맥동 링이 크림슨으로 남아
+   블루로 켜져도 어느 것이 위험인지 구분된다. */
+.node.act .mark-ring   { stroke: var(--connect); stroke-width: 2.2; }
+.node.act .mark-core   { fill: var(--connect); fill-opacity: .95; }
+.node.act .mark-outer  { stroke: var(--connect); stroke-opacity: .8; }
+.node.act .mark-diamond {
+  stroke: var(--connect);
+  fill: var(--connect);
+  fill-opacity: .22;
 }
-.node.act .mark-core { fill-opacity: .95; }
-.node.act .mark-outer { stroke-opacity: .75; }
+.node.act .node-label { fill: var(--connect-hi); }
 
-.node.act-self .mark-outer { stroke: #ffffff; stroke-opacity: .9; }
+.node.act-self .mark-ring   { stroke: var(--connect-hi); stroke-width: 3; }
+.node.act-self .mark-outer  { stroke: var(--connect-hi); stroke-opacity: .95; }
+.node.act-self .node-label  { fill: #ffffff; font-weight: 600; }
 .node.act .node-label { fill: var(--ink); opacity: 1; }
 
-.node.act-self .node-shape { stroke: #ffffff; stroke-width: 3; filter: brightness(1.5); }
+
 
 @media (prefers-reduced-motion: no-preference) {
   .node.act .halo {
     animation: ignite .62s cubic-bezier(.16,.8,.3,1) both;
     animation-delay: var(--hop-delay, 0s);
   }
-  .link.act {
-    stroke-dasharray: var(--len) var(--len);
-    stroke-dashoffset: var(--len);
-    animation: surge .5s ease-out both;
-    animation-delay: var(--hop-delay, 0s);
-  }
+  .link.act { animation: surge .5s ease-out both; animation-delay: var(--hop-delay, 0s); }
 }
 @media (prefers-reduced-motion: reduce) {
   .node.act .halo { opacity: var(--halo-hold, .4); transform: scale(1.2); }
-  .link.act { stroke-opacity: 1; }
+  .link.act { opacity: 1; }
 }
 
 /* 키프레임 안에서는 calc(var(...)) 가 무시되는 경우가 있어
@@ -627,13 +643,12 @@ body {
   100% { opacity: var(--halo-hold, .4);  transform: scale(1.12); stroke-width: 1.4; }
 }
 @keyframes surge {
-  0%   { stroke-dashoffset: var(--len); stroke-opacity: .15; }
-  60%  { stroke-opacity: 1; }
-  100% { stroke-dashoffset: 0; stroke-opacity: 1; }
+  0%   { opacity: .12; }
+  60%  { opacity: 1; }
+  100% { opacity: 1; }
 }
 
-.link.act { stroke-width: 2.2; }
-.link.act.link-converge { stroke: rgba(255,255,255,.6); }
+
 
 /* ══ 정밀 진단 패널 ═════════════════════════════════ */
 .assess { display: flex; flex-direction: column; gap: 6px; }
@@ -695,3 +710,68 @@ body {
   transform: rotate(45deg) scale(.85);
 }
 .legend-note b { color: var(--ink-2); font-weight: 500; }
+
+/* ── 행정조직 노드 ─────────────────────────────────── */
+.node-org .mark-ring { stroke-dasharray: 3 2.5; }
+.org-label { font-size: 9px; fill: var(--ink-3); }
+
+/* ── 신규 정책 입력 ─────────────────────────────────── */
+.dlg-wide { width: min(620px, 94vw); }
+.analyze-row { display: flex; align-items: center; gap: 10px; }
+.analyze-row .hint { font-size: 11px; }
+.analyze-out {
+  max-height: 260px; overflow-y: auto;
+  border: 1px solid var(--hairline); border-radius: 9px;
+  background: var(--surface-2); padding: 10px 11px;
+}
+.an-head { font-size: 11.5px; color: var(--ink-2); margin-bottom: 8px; line-height: 1.5; }
+.an-head b { color: var(--connect-hi); }
+.an-group { margin-top: 9px; }
+.an-group h4 {
+  margin: 0 0 5px; font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 500;
+}
+.an-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 5px 6px; border-radius: 6px; font-size: 12px; cursor: pointer;
+}
+.an-item:hover { background: var(--surface-3); }
+.an-item input { margin-top: 2px; accent-color: var(--connect); }
+.an-item .sc {
+  margin-left: auto; font-size: 10.5px; color: var(--ink-3);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.an-item .sub { display: block; font-size: 10.5px; color: var(--ink-3); margin-top: 1px; }
+.an-sector { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.an-sector select {
+  flex: 1; padding: 6px 9px; background: var(--surface-3);
+  border: 1px solid var(--hairline); border-radius: 7px; color: var(--ink);
+  font: inherit; font-size: 12.5px;
+}
+.an-none { font-size: 11.5px; color: var(--ink-3); padding: 4px 2px; }
+
+.org-bureau { margin-bottom: 10px; }
+.org-b-name {
+  font-size: 10.5px; letter-spacing: .05em; color: var(--ink-3);
+  padding: 0 0 4px 2px; border-bottom: 1px solid var(--hairline-2); margin-bottom: 5px;
+}
+.org-teams { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+.org-teams i {
+  font-style: normal; font-size: 10px; padding: 1px 6px;
+  border-radius: 999px; background: var(--surface-3); color: var(--ink-3);
+}
+
+.hidden-layer { display: none !important; }
+
+.legend-ramp { display: flex; gap: 2px; height: 9px; border-radius: 3px; overflow: hidden; }
+.legend-ramp i { flex: 1; display: block; }
+.legend-ramp-cap {
+  display: flex; justify-content: space-between;
+  font-size: 9.5px; color: var(--ink-3); margin-top: 3px;
+}
+.legend-org { background: none; border: 1.3px solid var(--ink-2); border-radius: 2px; }
+.legend-taper {
+  width: 18px; height: 6px; flex: none;
+  background: linear-gradient(to right, var(--g5), var(--g2));
+  clip-path: polygon(0 0, 100% 38%, 100% 62%, 0 100%);
+}

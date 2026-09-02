@@ -10,13 +10,13 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">
+  <button class="brand" id="brand-home" type="button" title="메인 화면으로">
     <span class="brand-mark" aria-hidden="true"></span>
-    <div class="brand-text">
+    <span class="brand-text">
       <strong>ThirdBrain</strong>
       <span>세종시 12대 섹터 · 진단 → 공약 네트워크</span>
-    </div>
-  </div>
+    </span>
+  </button>
 
   <div class="topbar-tools">
     <label class="search">
@@ -32,6 +32,7 @@
     </div>
 
     <button id="btn-reset" class="btn-ghost" title="초점 해제 및 화면 맞춤">초기화</button>
+    <button id="btn-policy" class="btn-ghost">＋ 신규 정책</button>
     <button id="btn-add" class="btn-primary">＋ 신호 입력</button>
   </div>
 </header>
@@ -53,6 +54,14 @@
       <fieldset class="filter-group">
         <legend>노드 종류</legend>
         <div id="filter-kind" class="chips"></div>
+      </fieldset>
+      <fieldset class="filter-group">
+        <legend>행정조직</legend>
+        <div class="chips">
+          <button class="chip" id="toggle-org">
+            <span class="chip-shape chip-org"></span>소관 과 표시
+          </button>
+        </div>
       </fieldset>
       <fieldset class="filter-group">
         <legend>진단 상태</legend>
@@ -151,6 +160,38 @@
     <menu class="dlg-actions">
       <button value="cancel" class="btn-ghost" type="submit" formnovalidate>취소</button>
       <button value="ok" class="btn-primary" id="dlg-submit">신호 연결</button>
+    </menu>
+  </form>
+</dialog>
+
+<!-- ── 신규 정책 입력 ─────────────────────────────────── -->
+<dialog id="dlg-policy" class="dlg dlg-wide">
+  <form method="dialog" id="form-policy">
+    <h2>신규 정책 입력</h2>
+    <p class="dlg-sub">정책 니즈를 저장하고, 97개 진단과 대조해 <b>연결 지점을 자동으로 찾아</b> 망에 편입합니다.
+      자동 판정이 애매하면 저장만 하고 Claude Code 가 처리하도록 넘깁니다.</p>
+
+    <label>정책명 <input name="title" required maxlength="200" placeholder="예: 야간 소아 응급진료센터 설치" /></label>
+    <label>정책 니즈 · 배경 <textarea name="need" rows="3" maxlength="2000" placeholder="어떤 문제를 겪고 있는지, 왜 필요한지"></textarea></label>
+    <div class="grid2">
+      <label>목표 <input name="goal" maxlength="300" placeholder="무엇이 달라지는가" /></label>
+      <label>제안자 <input name="proposer" maxlength="60" placeholder="선택" /></label>
+    </div>
+    <label>키워드 <input name="keywords" maxlength="200" placeholder="쉼표로 구분 — 예: 응급, 소아, 의료" /></label>
+
+    <div class="analyze-row">
+      <button type="button" class="btn-ghost" id="btn-analyze">망과 대조하기</button>
+      <span class="hint" id="analyze-hint">입력 후 눌러 연결 지점을 확인하세요.</span>
+    </div>
+
+    <div id="analyze-out" class="analyze-out" hidden></div>
+
+    <p class="dlg-err" id="policy-err" hidden></p>
+
+    <menu class="dlg-actions">
+      <button value="cancel" class="btn-ghost" type="submit" formnovalidate>취소</button>
+      <button type="button" class="btn-ghost" id="btn-defer">Claude Code 로 넘기기</button>
+      <button value="ok" class="btn-primary" id="policy-submit">망에 편입</button>
     </menu>
   </form>
 </dialog>
