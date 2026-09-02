@@ -53,6 +53,7 @@ const state = {
   hiddenLinkTypes: new Set(),
   hiddenKinds: new Set(),
   showOrg: true,
+  layout: 'split',   // split = 좌 진단 / 우 공약, sector = 섹터별 묶음
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
@@ -100,6 +101,50 @@ const RING_PLAN = {
   '-1': ['S01', 'S08', 'S09', 'S02', 'S10', 'S11'],
   '1':  ['S05', 'S06', 'S07', 'S03', 'S04', 'S12'],
 };
+
+/* ── 좌우 분리 배치 ───────────────────────────────────────────
+   왼쪽은 진단, 오른쪽은 공약. 섹터는 가운데 세로축에 선다.
+   같은 섹터가 좌우 같은 높이의 띠를 쓰므로, 왼쪽 띠는 두꺼운데
+   오른쪽이 얇으면 그 섹터가 곧 공약 공백이다 — 한눈에 보인다.
+   가운데 ±70 은 비워 시(市)가 앉을 자리를 만든다.                */
+const SPLIT = {
+  H: 600,          // 위아래 반높이
+  center: 78,      // 시(市) 자리로 비워 두는 구간
+  colW: 60,        // 격자 열 간격
+  rowH: 26,        // 격자 행 간격
+  diagX: 250,      // 진단 첫 열까지의 거리
+  pledgeX: 250,    // 공약 첫 열
+  orgX: 560,       // 과
+  teamX: 760,      // 팀
+};
+
+/** 섹터 번호 순(1~12)으로 위에서 아래로 가로 띠를 나눈다. */
+function splitBands(sectors) {
+  const ordered = sectors.slice().sort((a, b) => a.no - b.no);
+  const half = Math.ceil(ordered.length / 2);
+  const h = (SPLIT.H - SPLIT.center) / half;
+  const map = new Map();
+  ordered.forEach((s, k) => {
+    const upper = k < half;
+    const i = upper ? (half - 1 - k) : (k - half);   // 위쪽은 위에서부터 채운다
+    const y = upper
+      ? -(SPLIT.center + i * h + h / 2)
+      : (SPLIT.center + i * h + h / 2);
+    map.set(s.id, { y, h });
+  });
+  return map;
+}
+
+/** 띠 안에 n개를 격자로 앉힌다. side: -1 왼쪽 / +1 오른쪽 */
+function gridPoint(band, i, total, side, baseX, maxCols) {
+  const cols = Math.min(maxCols, Math.max(1, Math.ceil(total / 4)));
+  const rows = Math.ceil(total / cols);
+  const col = i % cols;
+  const row = Math.floor(i / cols);
+  const x = side * (baseX + col * SPLIT.colW);
+  const y = band.y + (row - (rows - 1) / 2) * SPLIT.rowH;
+  return { x, y };
+}
 
 /** 섹터별 호 구간 */
 function sectorSpans() {
@@ -287,6 +332,24 @@ function rollUpStatus(children) {
 function buildModel(raw) {
   const { taxonomy, diagnoses, pledges, links, signals } = raw;
   const spans = sectorSpans();
+  const bands = splitBands(taxonomy.sectors);
+  // 분리 배치에서 각 섹터가 몇 번째 항목을 앉혔는지 센다
+  const seat = { diagnosis: new Map(), pledge: new Map(), org: new Map(), team: new Map() };
+  const nextSeat = (kind, sid) => {
+    const n = seat[kind].get(sid) || 0;
+    seat[kind].set(sid, n + 1);
+    return n;
+  };
+  const countBy = (arr, key) => arr.reduce((m, x) => m.set(x[key], (m.get(x[key]) || 0) + 1), new Map());
+  const dgCount = countBy(diagnoses, 'sector');
+  const plCount = countBy(pledges, 'sector');
+
+  /** 분리 배치 좌표 — 섹터 띠 안의 격자에 앉힌다 */
+  const splitPoint = (sid, kind, side, baseX, maxCols, total) => {
+    const b = bands.get(sid);
+    if (!b) return { x: 0, y: 0 };
+    return gridPoint(b, nextSeat(kind, sid), total || 1, side, baseX, maxCols);
+  };
 
   const sigByDiag = new Map();
   for (const s of signals) {
@@ -315,17 +378,20 @@ function buildModel(raw) {
   nodes.push({
     id: taxonomy.city.id, level: 'city', label: taxonomy.city.label,
     sublabel: taxonomy.city.sublabel, color: '#ffffff', r: 28,
-    tx: 0, ty: 0, fx: 0, fy: 0,
+    tx: 0, ty: 0, sx: 0, sy: 0, fx: 0, fy: 0,
   });
 
   // ── 섹터 (피질과 백질 사이)
   for (const s of taxonomy.sectors) {
     const sp = spans.get(s.id);
     const p = ringPoint(sp.side, (sp.a0 + sp.a1) / 2, 0);
+    const b = bands.get(s.id);
+    // 분리 배치에서 섹터는 가운데 세로축에 선다 — 좌우 항목과 높이가 맞는다
+    const sy = b.y;
     nodes.push({
       id: s.id, level: 'sector', no: s.no, label: s.label, color: s.color,
-      domain: s.domain, side: sp.side, span: sp,
-      tx: p.x, ty: p.y, x: p.x, y: p.y,
+      domain: s.domain, side: sp.side, span: sp, band: b,
+      tx: p.x, ty: p.y, sx: 0, sy, x: p.x, y: p.y,
     });
   }
 
@@ -343,6 +409,7 @@ function buildModel(raw) {
       const a = sp.a0 + ((j + 0.5) / list.length) * (sp.a1 - sp.a0);
       const off = RING.inner - 16 * ((j % 3) / 2);
       const pt = ringPoint(sp.side, a, off);
+      const sPt = splitPoint(sid, 'pledge', 1, SPLIT.pledgeX, 2, plCount.get(sid));
       const degree = crossDeg.get(p.id) || 0;
       nodes.push({
         ...p,
@@ -351,7 +418,7 @@ function buildModel(raw) {
         crossDeg: degree, resolveCount: (p.resolves || []).length,
         signals: [], status: null,
         r: 10,   // applyPriority() 가 우선순위 기준으로 다시 정한다
-        tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
+        tx: pt.x, ty: pt.y, sx: sPt.x, sy: sPt.y, x: pt.x, y: pt.y,
       });
     });
   }
@@ -370,6 +437,7 @@ function buildModel(raw) {
       const a = sp.a0 + ((i + 0.5) / list.length) * (sp.a1 - sp.a0);
       const off = RING.outer + 20 * ((i % 3) / 2);
       const pt = ringPoint(sp.side, a, off);
+      const sPt = splitPoint(sid, 'diagnosis', -1, SPLIT.diagX, 3, dgCount.get(sid));
 
       const sigs = sigByDiag.get(d.id) || [];
       const load = signalLoad(sigs);
@@ -383,7 +451,7 @@ function buildModel(raw) {
         coveredBy: cover, coverage: cover.length,
         risk, status: riskStatus(risk),
         r: 10,   // applyPriority() 가 우선순위 기준으로 다시 정한다
-        tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
+        tx: pt.x, ty: pt.y, sx: sPt.x, sy: sPt.y, x: pt.x, y: pt.y,
       });
     });
   }
@@ -398,12 +466,24 @@ function buildModel(raw) {
       bySec.get(sid).push(d);
     }
     const teamSeen = new Set();
+    const teamSeatOf = new Map();
+    const teamTotal = new Map();
+    {
+      const seen = new Set();
+      for (const [sid, list] of bySec) for (const d of list) {
+        if (seen.has(d.id)) continue;
+        seen.add(d.id);
+        teamTotal.set(sid, (teamTotal.get(sid) || 0) + d.teams.length);
+      }
+    }
     for (const [sid, list] of bySec) {
       const sp = spans.get(sid);
       if (!sp) continue;
       list.forEach((d, i) => {
         const a = sp.a0 + ((i + 0.5) / list.length) * (sp.a1 - sp.a0);
         const pt = ringPoint(sp.side, a, RING.outer + 92 + 24 * (i % 2));
+        const ob = bands.get(sid);
+        const oPt = ob ? gridPoint(ob, i, list.length, 1, SPLIT.orgX, 3) : { x: 0, y: 0 };
         const orgNodeId = `${d.id}@${sid}`;
         nodes.push({
           ...d,
@@ -413,7 +493,7 @@ function buildModel(raw) {
           domain: sectorById.get(sid).domain, side: sp.side,
           status: null, signals: [],
           r: Math.max(7, Math.min(14, 6.5 + 1.1 * Math.sqrt(d.teams.length))),
-          tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
+          tx: pt.x, ty: pt.y, sx: oPt.x, sy: oPt.y, x: pt.x, y: pt.y,
         });
 
         // 팀은 과가 처음 등장한 섹터에만 매단다 (같은 팀이 중복되지 않게)
@@ -423,6 +503,9 @@ function buildModel(raw) {
         d.teams.forEach((t, k) => {
           const ta = a + (k - (d.teams.length - 1) / 2) * (span * 0.62 / Math.max(1, d.teams.length));
           const tp = ringPoint(sp.side, ta, RING.outer + 168 + 20 * (k % 2));
+          const tSeat = teamSeatOf.get(sid) || 0;
+          teamSeatOf.set(sid, tSeat + 1);
+          const tSp = ob ? gridPoint(ob, tSeat, teamTotal.get(sid) || 1, 1, SPLIT.teamX, 4) : { x: 0, y: 0 };
           nodes.push({
             id: t.id, level: 'team', kind: 'team',
             label: t.name, parentOrg: orgNodeId, division: d.name, bureauName: d.bureauName,
@@ -430,7 +513,7 @@ function buildModel(raw) {
             domain: sectorById.get(sid).domain, side: sp.side,
             duty: d.duty, status: null, signals: [],
             r: 5.2,
-            tx: tp.x, ty: tp.y, x: tp.x, y: tp.y,
+            tx: tp.x, ty: tp.y, sx: tSp.x, sy: tSp.y, x: tp.x, y: tp.y,
           });
         });
       });
@@ -458,7 +541,7 @@ function buildModel(raw) {
 
   // 영역 노드는 소속 섹터의 무게중심을 중심 쪽으로 당겨 배치한다(뇌량 부근)
   for (const d of nodes.filter((n) => n.level === 'domain' || false)) { /* noop */ }
-  for (const dom of taxonomy.domains) {
+  taxonomy.domains.forEach((dom, i) => {
     const kids = nodes.filter((n) => n.level === 'sector' && n.domain === dom.id);
     const cx = kids.reduce((a, k) => a + k.tx, 0) / kids.length;
     const cy = kids.reduce((a, k) => a + k.ty, 0) / kids.length;
@@ -473,9 +556,13 @@ function buildModel(raw) {
       atRisk: kids.reduce((a, k) => a + k.atRisk, 0),
       signalLoad: kids.reduce((a, k) => a + k.signalLoad, 0),
       r: 21,
-      tx: cx * 0.30, ty: cy * 0.34, x: cx * 0.30, y: cy * 0.34,
+      tx: cx * 0.30, ty: cy * 0.34,
+      // 분리 배치에서는 섹터 세로축 옆에 번갈아 세운다
+      sx: (i % 2 ? 1 : -1) * 112,
+      sy: kids.reduce((a, k) => a + (k.sy ?? 0), 0) / kids.length,
+      x: cx * 0.30, y: cy * 0.34,
     });
-  }
+  });
   const byId2 = new Map(nodes.map((n) => [n.id, n]));
   for (const s of nodes.filter((n) => n.level === 'sector')) s.domainNode = byId2.get(s.domain);
 
@@ -570,7 +657,7 @@ function initCanvas() {
   gNode = gRoot.append('g').attr('class', 'nodes');
   tooltipEl = $('#tooltip');
 
-  drawRings();
+  drawBackdrop();
 
   state.zoom = d3.zoom()
     .scaleExtent([0.2, 4])
@@ -583,6 +670,36 @@ function initCanvas() {
   svg.call(state.zoom)
      .on('dblclick.zoom', null)
      .on('click', (ev) => { if (ev.target.tagName === 'svg') clearFocus(); });
+}
+
+/** 현재 배치에 맞는 배경을 그린다. */
+function drawBackdrop() {
+  gBrain.selectAll('*').remove();
+  if (state.layout === 'split') drawSplitBackdrop();
+  else drawRings();
+}
+
+/** 좌우 분리 배치의 배경 — 가운데 척추와 섹터 띠 구분선 */
+function drawSplitBackdrop() {
+  const W = SPLIT.teamX + 260;
+  gBrain.append('line').attr('class', 'spine')
+    .attr('x1', 0).attr('y1', -SPLIT.H - 40).attr('x2', 0).attr('y2', SPLIT.H + 40);
+  const bands = [...state.byId.values()].filter((n) => n.level === 'sector');
+  for (const b of bands) {
+    if (!b.band) continue;
+    const y0 = b.band.y - b.band.h / 2;
+    gBrain.append('line').attr('class', 'band-rule')
+      .attr('x1', -W).attr('y1', y0).attr('x2', W).attr('y2', y0);
+  }
+  gBrain.append('text').attr('class', 'side-label')
+    .attr('x', -SPLIT.diagX - 40).attr('y', -SPLIT.H - 26).attr('text-anchor', 'middle')
+    .text('진단 — 문제');
+  gBrain.append('text').attr('class', 'side-label')
+    .attr('x', SPLIT.pledgeX + 40).attr('y', -SPLIT.H - 26).attr('text-anchor', 'middle')
+    .text('공약 — 해법');
+  gBrain.append('text').attr('class', 'side-label')
+    .attr('x', SPLIT.orgX + 100).attr('y', -SPLIT.H - 26).attr('text-anchor', 'middle')
+    .text('행정조직');
 }
 
 /** 배경 도형. 노드 좌표와 같은 RING 상수를 쓰므로 궤도와 정확히 맞물린다.
@@ -627,11 +744,40 @@ function drawRings() {
   }
 }
 
-function simulate() {
-  // 뇌 형상을 유지해야 하므로 위치력을 강하게 두고, 링크는 국소 장력만 준다.
-  const pull = (n) =>
+/** 현재 배치 모드의 목표 좌표 */
+function targetOf(n) {
+  return state.layout === 'split'
+    ? { x: n.sx ?? n.tx ?? 0, y: n.sy ?? n.ty ?? 0 }
+    : { x: n.tx ?? 0, y: n.ty ?? 0 };
+}
+
+/** 위치력의 세기 — 배치를 유지해야 하므로 계층별로 강하게 준다. */
+const pullStrength = (n) =>
     n.level === 'city' ? 1 : n.level === 'domain' ? 0.6
       : n.level === 'sector' ? 0.55 : (n.level === 'org' || n.level === 'team') ? 0.55 : 0.34;
+
+/** 배치를 바꾼다. 두 가지를 함께 해야 실제로 옮겨진다.
+ *  ① d3 의 forceX/forceY 는 접근자를 초기화 때만 읽으므로 힘을 새로 넣는다.
+ *  ② 노드를 새 목표 근처로 바로 옮긴다 — 400개가 화면을 가로질러 날아가는 데
+ *     수백 프레임이 걸려 전환이 느리게 느껴지기 때문이다. 이후 국소 정렬만 시킨다. */
+function retarget(snap = true) {
+  if (!state.sim) return;
+  if (snap) {
+    for (const n of state.nodes) {
+      if (n.fx != null) continue;               // 고정 노드(시)는 그대로
+      const t = targetOf(n);
+      n.x = t.x + (Math.random() - 0.5) * 12;
+      n.y = t.y + (Math.random() - 0.5) * 12;
+      n.vx = 0; n.vy = 0;
+    }
+  }
+  state.sim.force('x', d3.forceX((n) => targetOf(n).x).strength(pullStrength));
+  state.sim.force('y', d3.forceY((n) => targetOf(n).y).strength(pullStrength));
+  state.sim.alpha(0.5).restart();
+}
+
+function simulate() {
+  const pull = pullStrength;
 
   state.sim = d3.forceSimulation(state.nodes)
     .force('link', d3.forceLink(state.links).id((d) => d.id)
@@ -639,8 +785,8 @@ function simulate() {
       .strength((l) => (l.type === 'converge' ? 0.05 : 0.02)))
     .force('charge', d3.forceManyBody().strength(-90).distanceMax(240))
     .force('collide', d3.forceCollide().radius((n) => n.r + 5).iterations(3))
-    .force('x', d3.forceX((n) => n.tx ?? 0).strength(pull))
-    .force('y', d3.forceY((n) => n.ty ?? 0).strength(pull))
+    .force('x', d3.forceX((n) => targetOf(n).x).strength(pull))
+    .force('y', d3.forceY((n) => targetOf(n).y).strength(pull))
     .alpha(1).alphaDecay(0.028);
 }
 
@@ -1409,11 +1555,18 @@ function fitToScreen(ms = 600) {
   const rect = svg.node().getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
   const pad = 70;
-  // 조직 레이어를 켜면 바깥 궤도가 넓어지므로 그만큼 범위를 넓힌다
-  const edge = RING.outer + (state.showOrg ? 210 : 26);
-  const ext = RING.cx + RING.R + edge;
-  const [x0, x1] = [-ext - pad, ext + pad];
-  const [y0, y1] = [-(RING.R + edge) - pad, RING.R + edge + pad];
+  let x0, x1, y0, y1;
+  if (state.layout === 'split') {
+    const right = (state.showOrg ? SPLIT.teamX + 230 : SPLIT.pledgeX + 160);
+    const left = SPLIT.diagX + 200;
+    [x0, x1] = [-left - pad, right + pad];
+    [y0, y1] = [-SPLIT.H - 70 - pad, SPLIT.H + 40 + pad];
+  } else {
+    const edge = RING.outer + (state.showOrg ? 210 : 40);
+    const ext = RING.cx + RING.R + edge;
+    [x0, x1] = [-ext - pad, ext + pad];
+    [y0, y1] = [-(RING.R + edge) - pad, RING.R + edge + pad];
+  }
   const k = Math.min(rect.width / (x1 - x0), rect.height / (y1 - y0), 1.6);
   if (!Number.isFinite(k) || k <= 0) return;
   const t = d3.zoomIdentity
@@ -1437,10 +1590,22 @@ function bindControls() {
     if (e.key === 'Escape' && !$('#dlg-signal').open) clearFocus();
   });
 
-  $$('.seg-btn').forEach((btn) => btn.addEventListener('click', () => {
-    $$('.seg-btn').forEach((b) => b.classList.toggle('is-on', b === btn));
+  $$('.seg-btn[data-view]').forEach((btn) => btn.addEventListener('click', () => {
+    $$('.seg-btn[data-view]').forEach((b) => b.classList.toggle('is-on', b === btn));
     state.view = btn.dataset.view;
     applyVisibility();
+  }));
+
+  $$('.seg-btn[data-layout]').forEach((btn) => btn.addEventListener('click', () => {
+    if (state.layout === btn.dataset.layout) return;
+    $$('.seg-btn[data-layout]').forEach((b) => b.classList.toggle('is-on', b === btn));
+    state.layout = btn.dataset.layout;
+    clearFocus();
+    drawBackdrop();
+    retarget();                              // 힘을 새로 걸고 새 자리로 옮긴다
+    refreshLinks();
+    applyLabelVisibility();
+    setTimeout(() => fitToScreen(600), 350);
   }));
 
   $('#brand-home').addEventListener('click', () => goHome());
@@ -1457,7 +1622,7 @@ function bindControls() {
     clearFocus();
     state.query = ''; $('#search').value = '';
     state.view = 'all';
-    $$('.seg-btn').forEach((b) => b.classList.toggle('is-on', b.dataset.view === 'all'));
+    $$('.seg-btn[data-view]').forEach((b) => b.classList.toggle('is-on', b.dataset.view === 'all'));
     state.hiddenStatus.clear(); state.hiddenLinkTypes.clear(); state.hiddenKinds.clear();
     state.showOrg = false;
     $$('.chip').forEach((c) => c.classList.add('is-on'));
@@ -1811,6 +1976,10 @@ async function boot() {
   state.raw = await loadGraph();
   Object.assign(state, buildModel(state.raw));
 
+  for (const n of state.nodes) {
+    const t = targetOf(n);
+    n.x = t.x; n.y = t.y;
+  }
   initCanvas();
   simulate();
   render();

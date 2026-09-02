@@ -790,3 +790,10 @@ body.is-readonly #btn-add { opacity: .45; }
   border: 1px solid var(--ink-3); border-radius: 50%;
 }
 .lg-org { width: 10px; height: 10px; border-width: 1.2px; }
+
+/* ── 좌우 분리 배치 배경 ─────────────────────────────── */
+.spine { stroke: rgba(255,255,255,0.10); stroke-width: 1.2; }
+.band-rule { stroke: rgba(255,255,255,0.035); stroke-width: 1; }
+.side-label {
+  fill: var(--ink-3); font-size: 15px; letter-spacing: .08em; opacity: .7;
+}
