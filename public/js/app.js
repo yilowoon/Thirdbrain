@@ -102,48 +102,45 @@ const RING_PLAN = {
   '1':  ['S05', 'S06', 'S07', 'S03', 'S04', 'S12'],
 };
 
-/* ── 좌우 분리 배치 ───────────────────────────────────────────
-   왼쪽은 진단, 오른쪽은 공약. 섹터는 가운데 세로축에 선다.
-   같은 섹터가 좌우 같은 높이의 띠를 쓰므로, 왼쪽 띠는 두꺼운데
-   오른쪽이 얇으면 그 섹터가 곧 공약 공백이다 — 한눈에 보인다.
-   가운데 ±70 은 비워 시(市)가 앉을 자리를 만든다.                */
+/* ── 좌우 고리 배치 ───────────────────────────────────────────
+   로고 그대로다. 왼쪽 고리에 진단, 오른쪽 고리에 공약을 두르고,
+   두 고리가 겹치는 렌즈 안에 시(市)와 12섹터가 앉는다.
+   행정조직은 전체를 감싸는 바깥 고리에 둘러 좌우 대칭을 지킨다.
+   같은 t 는 좌우가 같은 높이이므로, 같은 섹터의 진단과 공약이 마주 본다. */
 const SPLIT = {
-  H: 600,          // 위아래 반높이
-  center: 78,      // 시(市) 자리로 비워 두는 구간
-  colW: 60,        // 격자 열 간격
-  rowH: 26,        // 격자 행 간격
-  diagX: 250,      // 진단 첫 열까지의 거리
-  pledgeX: 250,    // 공약 첫 열
-  orgX: 560,       // 과
-  teamX: 760,      // 팀
+  // 두 원이 크게 겹치므로 고리 한 바퀴를 다 쓰면 40%가 렌즈 안으로 파고든다.
+  // 노드는 바깥쪽 호(|t| ≤ 100°)에만 앉히고, 배경 원은 완전한 형태로 남긴다.
+  // 그러면 서로 마주 보는 두 개의 C 자 — 로고 그대로가 된다.
+  edge: 100,
+  rows: [26, 9, -9, -26],
+  orgR: 792,       // 조직을 두르는 바깥 고리
+  teamR: 872,
+  lensSquash: 0.62,
 };
 
-/** 섹터 번호 순(1~12)으로 위에서 아래로 가로 띠를 나눈다. */
+/** 12섹터를 고리 한 바퀴에 나눈다. t = -90 이 맨 위, 시계방향. */
 function splitBands(sectors) {
   const ordered = sectors.slice().sort((a, b) => a.no - b.no);
-  const half = Math.ceil(ordered.length / 2);
-  const h = (SPLIT.H - SPLIT.center) / half;
+  const span = (SPLIT.edge * 2) / ordered.length;
   const map = new Map();
   ordered.forEach((s, k) => {
-    const upper = k < half;
-    const i = upper ? (half - 1 - k) : (k - half);   // 위쪽은 위에서부터 채운다
-    const y = upper
-      ? -(SPLIT.center + i * h + h / 2)
-      : (SPLIT.center + i * h + h / 2);
-    map.set(s.id, { y, h });
+    const t0 = -SPLIT.edge + k * span;
+    map.set(s.id, { idx: k, n: ordered.length, t0: t0 + span * 0.06, t1: t0 + span * 0.94 });
   });
   return map;
 }
 
-/** 띠 안에 n개를 격자로 앉힌다. side: -1 왼쪽 / +1 오른쪽 */
-function gridPoint(band, i, total, side, baseX, maxCols) {
-  const cols = Math.min(maxCols, Math.max(1, Math.ceil(total / 4)));
-  const rows = Math.ceil(total / cols);
-  const col = i % cols;
-  const row = Math.floor(i / cols);
-  const x = side * (baseX + col * SPLIT.colW);
-  const y = band.y + (row - (rows - 1) / 2) * SPLIT.rowH;
-  return { x, y };
+/** 고리 위 한 자리. side -1 왼쪽(진단) / +1 오른쪽(공약) */
+function bandPoint(band, i, total, side) {
+  const t = band.t0 + ((i + 0.5) / Math.max(1, total)) * (band.t1 - band.t0);
+  return ringPoint(side, t, SPLIT.rows[i % SPLIT.rows.length]);
+}
+
+/** 바깥 고리(조직) 한 자리 — 화면 중심 기준 원 */
+function outerPoint(band, i, total, radius) {
+  const t = band.t0 + ((i + 0.5) / Math.max(1, total)) * (band.t1 - band.t0);
+  const a = deg(t);
+  return { x: Math.cos(a) * radius, y: Math.sin(a) * radius };
 }
 
 /** 섹터별 호 구간 */
@@ -344,11 +341,11 @@ function buildModel(raw) {
   const dgCount = countBy(diagnoses, 'sector');
   const plCount = countBy(pledges, 'sector');
 
-  /** 분리 배치 좌표 — 섹터 띠 안의 격자에 앉힌다 */
-  const splitPoint = (sid, kind, side, baseX, maxCols, total) => {
+  /** 분리 배치 좌표 — 해당 섹터의 고리 구간에 앉힌다 */
+  const splitPoint = (sid, kind, side, total) => {
     const b = bands.get(sid);
     if (!b) return { x: 0, y: 0 };
-    return gridPoint(b, nextSeat(kind, sid), total || 1, side, baseX, maxCols);
+    return bandPoint(b, nextSeat(kind, sid), total || 1, side);
   };
 
   const sigByDiag = new Map();
@@ -386,12 +383,17 @@ function buildModel(raw) {
     const sp = spans.get(s.id);
     const p = ringPoint(sp.side, (sp.a0 + sp.a1) / 2, 0);
     const b = bands.get(s.id);
-    // 분리 배치에서 섹터는 가운데 세로축에 선다 — 좌우 항목과 높이가 맞는다
-    const sy = b.y;
+    // 분리 배치에서 섹터는 렌즈 안 세로 열에 선다. 가운데는 시(市) 자리로 비운다
+    const half = b.n / 2;
+    const up = b.idx < half;
+    const j = up ? (half - 1 - b.idx) : (b.idx - half);
+    const step = (RING.lensY * SPLIT.lensSquash - 70) / half;
+    const sy = (up ? -1 : 1) * (70 + j * step + step / 2);
+    const sx = (b.idx % 2 ? 1 : -1) * 34;
     nodes.push({
       id: s.id, level: 'sector', no: s.no, label: s.label, color: s.color,
       domain: s.domain, side: sp.side, span: sp, band: b,
-      tx: p.x, ty: p.y, sx: 0, sy, x: p.x, y: p.y,
+      tx: p.x, ty: p.y, sx, sy, x: p.x, y: p.y,
     });
   }
 
@@ -409,7 +411,7 @@ function buildModel(raw) {
       const a = sp.a0 + ((j + 0.5) / list.length) * (sp.a1 - sp.a0);
       const off = RING.inner - 16 * ((j % 3) / 2);
       const pt = ringPoint(sp.side, a, off);
-      const sPt = splitPoint(sid, 'pledge', 1, SPLIT.pledgeX, 2, plCount.get(sid));
+      const sPt = splitPoint(sid, 'pledge', 1, plCount.get(sid));
       const degree = crossDeg.get(p.id) || 0;
       nodes.push({
         ...p,
@@ -437,7 +439,7 @@ function buildModel(raw) {
       const a = sp.a0 + ((i + 0.5) / list.length) * (sp.a1 - sp.a0);
       const off = RING.outer + 20 * ((i % 3) / 2);
       const pt = ringPoint(sp.side, a, off);
-      const sPt = splitPoint(sid, 'diagnosis', -1, SPLIT.diagX, 3, dgCount.get(sid));
+      const sPt = splitPoint(sid, 'diagnosis', -1, dgCount.get(sid));
 
       const sigs = sigByDiag.get(d.id) || [];
       const load = signalLoad(sigs);
@@ -483,7 +485,7 @@ function buildModel(raw) {
         const a = sp.a0 + ((i + 0.5) / list.length) * (sp.a1 - sp.a0);
         const pt = ringPoint(sp.side, a, RING.outer + 92 + 24 * (i % 2));
         const ob = bands.get(sid);
-        const oPt = ob ? gridPoint(ob, i, list.length, 1, SPLIT.orgX, 3) : { x: 0, y: 0 };
+        const oPt = ob ? outerPoint(ob, i, list.length, SPLIT.orgR) : { x: 0, y: 0 };
         const orgNodeId = `${d.id}@${sid}`;
         nodes.push({
           ...d,
@@ -505,7 +507,7 @@ function buildModel(raw) {
           const tp = ringPoint(sp.side, ta, RING.outer + 168 + 20 * (k % 2));
           const tSeat = teamSeatOf.get(sid) || 0;
           teamSeatOf.set(sid, tSeat + 1);
-          const tSp = ob ? gridPoint(ob, tSeat, teamTotal.get(sid) || 1, 1, SPLIT.teamX, 4) : { x: 0, y: 0 };
+          const tSp = ob ? outerPoint(ob, tSeat, teamTotal.get(sid) || 1, SPLIT.teamR) : { x: 0, y: 0 };
           nodes.push({
             id: t.id, level: 'team', kind: 'team',
             label: t.name, parentOrg: orgNodeId, division: d.name, bureauName: d.bureauName,
@@ -558,7 +560,7 @@ function buildModel(raw) {
       r: 21,
       tx: cx * 0.30, ty: cy * 0.34,
       // 분리 배치에서는 섹터 세로축 옆에 번갈아 세운다
-      sx: (i % 2 ? 1 : -1) * 112,
+      sx: (i % 2 ? 1 : -1) * 108,
       sy: kids.reduce((a, k) => a + (k.sy ?? 0), 0) / kids.length,
       x: cx * 0.30, y: cy * 0.34,
     });
@@ -679,27 +681,49 @@ function drawBackdrop() {
   else drawRings();
 }
 
-/** 좌우 분리 배치의 배경 — 가운데 척추와 섹터 띠 구분선 */
+/** 좌우 고리 배치의 배경 — 로고와 같은 두 고리, 그리고 조직을 감싸는 바깥 고리 */
 function drawSplitBackdrop() {
-  const W = SPLIT.teamX + 260;
-  gBrain.append('line').attr('class', 'spine')
-    .attr('x1', 0).attr('y1', -SPLIT.H - 40).attr('x2', 0).attr('y2', SPLIT.H + 40);
-  const bands = [...state.byId.values()].filter((n) => n.level === 'sector');
-  for (const b of bands) {
-    if (!b.band) continue;
-    const y0 = b.band.y - b.band.h / 2;
-    gBrain.append('line').attr('class', 'band-rule')
-      .attr('x1', -W).attr('y1', y0).attr('x2', W).attr('y2', y0);
+  const { R, cx, lensY } = RING;
+
+  const defs = gBrain.append('defs');
+  const grad = defs.append('radialGradient').attr('id', 'lensGlow2');
+  grad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(255,255,255,0.075)');
+  grad.append('stop').attr('offset', '65%').attr('stop-color', 'rgba(255,255,255,0.02)');
+  grad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(255,255,255,0)');
+
+  gBrain.append('path').attr('class', 'lens-fill')
+    .attr('d', `M0,${-lensY} A${R} ${R} 0 0 1 0,${lensY} A${R} ${R} 0 0 1 0,${-lensY} Z`);
+  gBrain.append('ellipse').attr('class', 'lens-glow')
+    .attr('cx', 0).attr('cy', 0).attr('rx', R - cx + 30).attr('ry', lensY * 0.8)
+    .attr('fill', 'url(#lensGlow2)');
+
+  for (const side of [-1, 1]) {
+    gBrain.append('circle').attr('class', 'orbit orbit-main')
+      .attr('cx', side * cx).attr('cy', 0).attr('r', R);
+    for (const off of [SPLIT.rows[0], SPLIT.rows[2]]) {
+      gBrain.append('circle').attr('class', 'orbit orbit-faint')
+        .attr('cx', side * cx).attr('cy', 0).attr('r', R + off);
+    }
   }
+
+  if (state.showOrg) {
+    for (const r of [SPLIT.orgR, SPLIT.teamR]) {
+      gBrain.append('circle').attr('class', 'orbit orbit-faint')
+        .attr('cx', 0).attr('cy', 0).attr('r', r);
+    }
+  }
+
+  gBrain.append('path').attr('class', 'lens-edge')
+    .attr('d', `M0,${-lensY} A${R} ${R} 0 0 1 0,${lensY} A${R} ${R} 0 0 1 0,${-lensY} Z`);
+
   gBrain.append('text').attr('class', 'side-label')
-    .attr('x', -SPLIT.diagX - 40).attr('y', -SPLIT.H - 26).attr('text-anchor', 'middle')
+    .attr('x', -(cx + R) - 34).attr('y', 0).attr('text-anchor', 'middle')
+    .attr('transform', `rotate(-90 ${-(cx + R) - 34} 0)`)
     .text('진단 — 문제');
   gBrain.append('text').attr('class', 'side-label')
-    .attr('x', SPLIT.pledgeX + 40).attr('y', -SPLIT.H - 26).attr('text-anchor', 'middle')
+    .attr('x', cx + R + 34).attr('y', 0).attr('text-anchor', 'middle')
+    .attr('transform', `rotate(90 ${cx + R + 34} 0)`)
     .text('공약 — 해법');
-  gBrain.append('text').attr('class', 'side-label')
-    .attr('x', SPLIT.orgX + 100).attr('y', -SPLIT.H - 26).attr('text-anchor', 'middle')
-    .text('행정조직');
 }
 
 /** 배경 도형. 노드 좌표와 같은 RING 상수를 쓰므로 궤도와 정확히 맞물린다.
@@ -1557,10 +1581,9 @@ function fitToScreen(ms = 600) {
   const pad = 70;
   let x0, x1, y0, y1;
   if (state.layout === 'split') {
-    const right = (state.showOrg ? SPLIT.teamX + 230 : SPLIT.pledgeX + 160);
-    const left = SPLIT.diagX + 200;
-    [x0, x1] = [-left - pad, right + pad];
-    [y0, y1] = [-SPLIT.H - 70 - pad, SPLIT.H + 40 + pad];
+    const ext = state.showOrg ? SPLIT.teamR + 40 : RING.cx + RING.R + 60;
+    [x0, x1] = [-ext - pad, ext + pad];
+    [y0, y1] = [-ext - pad, ext + pad];
   } else {
     const edge = RING.outer + (state.showOrg ? 210 : 40);
     const ext = RING.cx + RING.R + edge;
