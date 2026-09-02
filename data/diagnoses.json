@@ -2,8 +2,19 @@
   "_meta": {
     "title": "세종시 12대 섹터 진단 항목",
     "source": "세종시 진단 12대 섹터 정리_Test.pdf 에서 원문 그대로 추출",
-    "notice": "진단 문구는 원자료 그대로다. weight(중대도)는 미기재 항목이므로 기본값 5이며, 검토 후 조정해야 한다.",
-    "count": 97
+    "notice": "진단 문구는 원자료 그대로다. assess/severity/weight 는 4축 평가모델로 부여한 분석값이다.",
+    "count": 97,
+    "assessment": {
+      "model": "4축 가중합 — 구조성 30% · 체감도 25% · 악화성 25% · 권한결여 20%",
+      "axes": {
+        "structural": "단년도 정책으로 해소되지 않는 구조적 결손인가 (1~5)",
+        "felt": "시민 생활에 직접·즉시 닿는가 (1~5)",
+        "trajectory": "방치 시 스스로 악화되고 다른 영역으로 번지는가 (1~5)",
+        "autonomyGap": "해법이 시 권한 밖(중앙·국회·타기관)에 있는가 (1~5)"
+      },
+      "severity": "0~100. 값이 클수록 구조적으로 심각한 진단.",
+      "notice": "이 채점은 공개 지표와 정책 맥락에 근거한 구조화된 평가이지 공식 통계가 아니다. evidence 필드가 있는 항목만 공개 수치로 뒷받침된다. 채점은 검토·조정 대상이다."
+    }
   },
   "diagnoses": [
     {
@@ -12,7 +23,14 @@
       "no": 1,
       "label": "세종역 부재와 광역철도망 불균형",
       "detail": "국가 교통망 속 고립된 행정도시",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 90
     },
     {
       "id": "S01-02",
@@ -20,7 +38,14 @@
       "no": 2,
       "label": "정부청사 접근 교통 불편",
       "detail": "부족한 수단과 BRT 의존 한계",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 3,
+        "autonomyGap": 3
+      },
+      "severity": 76
     },
     {
       "id": "S01-03",
@@ -28,7 +53,14 @@
       "no": 3,
       "label": "생활교통망 단절",
       "detail": "읍면지역 대중교통 소외",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 77
     },
     {
       "id": "S01-04",
@@ -36,7 +68,18 @@
       "no": 4,
       "label": "상가 공실과 상권 붕괴",
       "detail": "신도시 중심 상업시설의 구조적 위기",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 92,
+      "evidence": {
+        "fact": "중대형 상가 공실률 24.2~25.8% — 전국 17개 시도 중 1위",
+        "src": "한국부동산원 상업용부동산 임대동향조사 (언론 보도 인용)"
+      }
     },
     {
       "id": "S01-05",
@@ -44,7 +87,14 @@
       "no": 5,
       "label": "전통시장 주차난과 구도심 침체",
       "detail": "지역경제 활력 저하",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 72
     },
     {
       "id": "S01-06",
@@ -52,7 +102,14 @@
       "no": 6,
       "label": "읍·면 지역 생활SOC 격차",
       "detail": "낙후된 기반시설과 불균형",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 83
     },
     {
       "id": "S01-07",
@@ -60,15 +117,29 @@
       "no": 7,
       "label": "농촌 인구감소와 빈집 방치",
       "detail": "농촌 공동체의 지속가능성 위기",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 78
     },
     {
       "id": "S01-08",
       "sector": "S01",
       "no": 8,
-      "label": "신도심",
-      "detail": "구도심 불균형 발전 - 생활 여건의 양극화",
-      "weight": 5
+      "label": "신도심-구도심 불균형 발전",
+      "detail": "생활 여건의 양극화",
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 88
     },
     {
       "id": "S01-09",
@@ -76,7 +147,14 @@
       "no": 9,
       "label": "도시공간 관리 부재",
       "detail": "무계획적 확장과 공동화 현상",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 71
     },
     {
       "id": "S01-10",
@@ -84,7 +162,14 @@
       "no": 10,
       "label": "스마트시티 시범사업의 한계",
       "detail": "시민 체감효과 부족",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 3,
+        "trajectory": 3,
+        "autonomyGap": 3
+      },
+      "severity": 60
     },
     {
       "id": "S02-01",
@@ -92,7 +177,18 @@
       "no": 1,
       "label": "소상공인 수익 저조",
       "detail": "지역 상권 활력 약화와 생존 위기",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 92,
+      "evidence": {
+        "fact": "나성·대평·어진동 폐업 업체 각 465~537개(2024년 말). 상가 공실률 전국 1위",
+        "src": "한국부동산원 / 언론 보도"
+      }
     },
     {
       "id": "S02-02",
@@ -100,7 +196,18 @@
       "no": 2,
       "label": "기업 유치 한계",
       "detail": "낮은 산업입지 매력과 투자 미흡",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 5,
+        "autonomyGap": 4
+      },
+      "severity": 91,
+      "evidence": {
+        "fact": "자족기능용지 비율 6.7% — 수도권 신도시보다도 낮음 (정부, 20.7%로 확대 추진)",
+        "src": "행복도시 건설계획"
+      }
     },
     {
       "id": "S02-03",
@@ -108,7 +215,18 @@
       "no": 3,
       "label": "청년 일자리 부족",
       "detail": "인재 역외 유출과 고용 불안",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 92,
+      "evidence": {
+        "fact": "15~24세 청소년·청년층 순유출 전환",
+        "src": "세종시 인구통계 / 언론 보도"
+      }
     },
     {
       "id": "S02-04",
@@ -116,7 +234,14 @@
       "no": 4,
       "label": "경력단절 여성 재취업 한계",
       "detail": "돌봄·고용 연계 미흡",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S02-05",
@@ -124,7 +249,14 @@
       "no": 5,
       "label": "실버일자리 부족",
       "detail": "고령화 사회에 대응하지 못하는 구조",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 72
     },
     {
       "id": "S02-06",
@@ -132,7 +264,14 @@
       "no": 6,
       "label": "전략산업 과잉투자 문제",
       "detail": "지역특성과 무관한 선정의 부작용",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 66
     },
     {
       "id": "S02-07",
@@ -140,7 +279,18 @@
       "no": 7,
       "label": "매몰비용 증가",
       "detail": "선택과 집중 실패로 인한 재정 위기",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 66,
+      "evidence": {
+        "fact": "2026년 채무 5,248억·채무비율 22.30% 전망. 의무지출 비중 56%('21)→72%('26)",
+        "src": "세종시 재정운용계획 / 시장직 인수위"
+      }
     },
     {
       "id": "S02-08",
@@ -148,7 +298,14 @@
       "no": 8,
       "label": "혁신 스타트업 기반 취약",
       "detail": "창업 생태계 미조성",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 77
     },
     {
       "id": "S02-09",
@@ -156,7 +313,14 @@
       "no": 9,
       "label": "산학연 협력체계 단절",
       "detail": "클러스터 기능 상실",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 4
+      },
+      "severity": 81
     },
     {
       "id": "S02-10",
@@ -164,7 +328,18 @@
       "no": 10,
       "label": "수도권 의존 심화",
       "detail": "자족기능 약화와 베드타운화",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 5,
+        "autonomyGap": 4
+      },
+      "severity": 91,
+      "evidence": {
+        "fact": "자족기능용지 6.7%, 통근 유출형 구조 — 비수도권 유일 수준의 베드타운 성격",
+        "src": "행복도시 건설계획 / 도시연구"
+      }
     },
     {
       "id": "S03-01",
@@ -172,7 +347,14 @@
       "no": 1,
       "label": "행정수도 위상 불확실성",
       "detail": "헌재 판결 이후 지속되는 논란",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 85
     },
     {
       "id": "S03-02",
@@ -180,7 +362,18 @@
       "no": 2,
       "label": "국회 세종의사당 건립 지연",
       "detail": "완전한 입법 기능 확보 한계",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 90,
+      "evidence": {
+        "fact": "국회 세종의사당 설계·부지 협의 지연 — 국가 일정에 종속",
+        "src": "언론 보도"
+      }
     },
     {
       "id": "S03-03",
@@ -188,7 +381,14 @@
       "no": 3,
       "label": "핵심기관 이전 미비",
       "detail": "청와대·대법원 등 이전 지연",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 85
     },
     {
       "id": "S03-04",
@@ -196,7 +396,14 @@
       "no": 4,
       "label": "분산 행정의 비효율",
       "detail": "행정 비용과 중복 문제",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 3,
+        "autonomyGap": 5
+      },
+      "severity": 74
     },
     {
       "id": "S03-05",
@@ -204,7 +411,14 @@
       "no": 5,
       "label": "시민참여 거버넌스 부족",
       "detail": "관 주도적 의사결정 구조",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 57
     },
     {
       "id": "S03-06",
@@ -212,7 +426,14 @@
       "no": 6,
       "label": "균형발전 상징성 약화",
       "detail": "수도권 집중 완화 효과 미흡",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 74
     },
     {
       "id": "S03-07",
@@ -220,7 +441,14 @@
       "no": 7,
       "label": "행정도시와 생활도시 간 괴리",
       "detail": "시민 생활 만족도 저하",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 87
     },
     {
       "id": "S03-08",
@@ -228,7 +456,14 @@
       "no": 8,
       "label": "정치적 이해관계 충돌",
       "detail": "도시 비전 왜곡",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 74
     },
     {
       "id": "S04-01",
@@ -236,7 +471,18 @@
       "no": 1,
       "label": "문화예술 인프라 부족",
       "detail": "공연장·미술관·복합공간의 절대적 부족",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 83,
+      "evidence": {
+        "fact": "세종 아트센터 1,071석 — 당초 계획 2,000석의 절반, 인근 도시 공연장의 2/3 규모",
+        "src": "언론 보도"
+      }
     },
     {
       "id": "S04-02",
@@ -244,7 +490,14 @@
       "no": 2,
       "label": "문화예술인 양성 체계 부재",
       "detail": "전문 인재 발굴 한계",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S04-03",
@@ -252,7 +505,14 @@
       "no": 3,
       "label": "문화산업진흥 전담기구 미비",
       "detail": "체계적 육성 부재",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 1
+      },
+      "severity": 58
     },
     {
       "id": "S04-04",
@@ -260,7 +520,14 @@
       "no": 4,
       "label": "창작공간·지원정책 부족",
       "detail": "청년예술인 정착 어려움",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 1
+      },
+      "severity": 63
     },
     {
       "id": "S04-05",
@@ -268,7 +535,14 @@
       "no": 5,
       "label": "외부 의존형 행사",
       "detail": "1회성 이벤트 중심의 운영",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 3,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 52
     },
     {
       "id": "S04-06",
@@ -276,7 +550,18 @@
       "no": 6,
       "label": "세종예술의전당 규모 한계",
       "detail": "시민 수요 대비 부족",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 67,
+      "evidence": {
+        "fact": "아트센터 1,071석으로 축소 건립 — 시민 수요 대비 부족",
+        "src": "언론 보도"
+      }
     },
     {
       "id": "S04-07",
@@ -284,7 +569,14 @@
       "no": 7,
       "label": "복숭아축제 존속 위기",
       "detail": "기후변화에 따른 지역 특산물 불안정성",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 56
     },
     {
       "id": "S04-08",
@@ -292,7 +584,14 @@
       "no": 8,
       "label": "세종축제 정체성 부재",
       "detail": "방향성 없는 프로그램 구성",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 3,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 52
     },
     {
       "id": "S04-09",
@@ -300,7 +599,14 @@
       "no": 9,
       "label": "‘한글문화도시’의 자기제한성",
       "detail": "다원적 문화 확장 억제",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 51
     },
     {
       "id": "S04-10",
@@ -308,7 +614,14 @@
       "no": 10,
       "label": "시민참여형 문화정책 부재",
       "detail": "생활문화 기반 취약",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 57
     },
     {
       "id": "S05-01",
@@ -316,7 +629,18 @@
       "no": 1,
       "label": "고교생 역외 전학·이주 심화",
       "detail": "교육 인프라 불균형 문제",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 88,
+      "evidence": {
+        "fact": "2025년 인구 순유출 -47명 — 2012년 출범 13년 만에 순유입 구조 붕괴. 학군 이탈이 주요인",
+        "src": "세종시 인구통계 / 언론 보도"
+      }
     },
     {
       "id": "S05-02",
@@ -324,7 +648,14 @@
       "no": 2,
       "label": "수월성 교육 약화",
       "detail": "맞춤형·특성화 교육 기회 부족",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 77
     },
     {
       "id": "S05-03",
@@ -332,7 +663,14 @@
       "no": 3,
       "label": "공교육 신뢰 저하",
       "detail": "사교육 의존 심화와 가계 부담",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 77
     },
     {
       "id": "S05-04",
@@ -340,7 +678,14 @@
       "no": 4,
       "label": "과도한 교육비 지출",
       "detail": "가정경제를 압박하는 구조",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 1
+      },
+      "severity": 73
     },
     {
       "id": "S05-05",
@@ -348,7 +693,18 @@
       "no": 5,
       "label": "지역 내 대학 부재",
       "detail": "고등교육 기반 취약과 청년 유출",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 5,
+        "autonomyGap": 4
+      },
+      "severity": 91,
+      "evidence": {
+        "fact": "관내 4년제 종합대학 부재 — 고등교육 기반 없음",
+        "src": "교육통계"
+      }
     },
     {
       "id": "S05-06",
@@ -356,7 +712,14 @@
       "no": 6,
       "label": "산학연 연계 부족",
       "detail": "대학 부재로 인한 연구·산업 연계 한계",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 4
+      },
+      "severity": 81
     },
     {
       "id": "S05-07",
@@ -364,7 +727,14 @@
       "no": 7,
       "label": "청소년 진로체험 기회 제한",
       "detail": "다양한 진로 탐색 기회 부족",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 57
     },
     {
       "id": "S05-08",
@@ -372,7 +742,14 @@
       "no": 8,
       "label": "글로벌 인재 양성 체계 미흡",
       "detail": "세계화 시대 교육 전략 부재",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 66
     },
     {
       "id": "S06-01",
@@ -380,7 +757,14 @@
       "no": 1,
       "label": "급격한 고령화",
       "detail": "맞춤형 복지 서비스 미흡",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 83
     },
     {
       "id": "S06-02",
@@ -388,7 +772,14 @@
       "no": 2,
       "label": "경단녀 재취업 한계",
       "detail": "돌봄과 일자리의 연결 부족",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S06-03",
@@ -396,7 +787,14 @@
       "no": 3,
       "label": "청년층 복지 미흡",
       "detail": "주거·일자리·문화 지원 부재",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 72
     },
     {
       "id": "S06-04",
@@ -404,15 +802,33 @@
       "no": 4,
       "label": "장애인·저소득층 정책 미비",
       "detail": "사회적 약자 보호 부족",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 77
     },
     {
       "id": "S06-05",
       "sector": "S06",
       "no": 5,
-      "label": "신도심",
-      "detail": "구도심 격차 확대 - 서비스 전달체계 불균형",
-      "weight": 5
+      "label": "신도심-구도심 격차 확대",
+      "detail": "서비스 전달체계 불균형",
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 83,
+      "evidence": {
+        "fact": "신도심-읍면 생활SOC·서비스 전달 격차 지속",
+        "src": "세종시 균형발전 자료"
+      }
     },
     {
       "id": "S06-06",
@@ -420,7 +836,14 @@
       "no": 6,
       "label": "아동·청소년 보호 취약",
       "detail": "돌봄 공백과 안전 문제",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 77
     },
     {
       "id": "S06-07",
@@ -428,7 +851,14 @@
       "no": 7,
       "label": "공동체 기반 약화",
       "detail": "주민 연대감 부족",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 1
+      },
+      "severity": 68
     },
     {
       "id": "S07-01",
@@ -436,7 +866,18 @@
       "no": 1,
       "label": "상급종합병원 부재",
       "detail": "대전·청주 원정 진료 불가피",
-      "weight": 5
+      "weight": 10,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 4
+      },
+      "severity": 96,
+      "evidence": {
+        "fact": "상급종합병원 관내 의료이용률 0.0% — 전국 평균 63.7%. 사실상 100% 관외 원정진료",
+        "src": "건강보험심사평가원 (2021 기준)"
+      }
     },
     {
       "id": "S07-02",
@@ -444,7 +885,14 @@
       "no": 2,
       "label": "응급·중증환자 이송체계 취약",
       "detail": "골든타임 확보 어려움",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 92
     },
     {
       "id": "S07-03",
@@ -452,7 +900,14 @@
       "no": 3,
       "label": "전문 진료과목 부족",
       "detail": "의료서비스 다양성 한계",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 87
     },
     {
       "id": "S07-04",
@@ -460,7 +915,14 @@
       "no": 4,
       "label": "공공보건 인프라 취약",
       "detail": "감염병 대응 미흡",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 72
     },
     {
       "id": "S07-05",
@@ -468,15 +930,29 @@
       "no": 5,
       "label": "정신건강 지원 부족",
       "detail": "상담·치료 서비스 미비",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 72
     },
     {
       "id": "S07-06",
       "sector": "S07",
       "no": 6,
-      "label": "고령화 대비 의료",
-      "detail": "돌봄 연계 부재",
-      "weight": 5
+      "label": "고령화 대비 의료-돌봄 연계 부재",
+      "detail": "",
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 83
     },
     {
       "id": "S07-07",
@@ -484,7 +960,18 @@
       "no": 7,
       "label": "의료 인력 유치 한계",
       "detail": "의대·간호대 부재",
-      "weight": 5
+      "weight": 9,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 4
+      },
+      "severity": 86,
+      "evidence": {
+        "fact": "관내 의과대학·간호대학 부재 — 의료인력 자체 공급 경로 없음",
+        "src": "교육통계"
+      }
     },
     {
       "id": "S07-08",
@@ -492,7 +979,14 @@
       "no": 8,
       "label": "지역 병원 경쟁력 약화",
       "detail": "민관 협력 부진",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 76
     },
     {
       "id": "S08-01",
@@ -500,7 +994,14 @@
       "no": 1,
       "label": "기후변화와 특산품 위기",
       "detail": "복숭아 등 농산물 존속 불안",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 4
+      },
+      "severity": 80
     },
     {
       "id": "S08-02",
@@ -508,7 +1009,14 @@
       "no": 2,
       "label": "녹색행정도시 구호와 괴리",
       "detail": "실질적 정책 부재",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 53
     },
     {
       "id": "S08-03",
@@ -516,7 +1024,14 @@
       "no": 3,
       "label": "도시 열섬·미세먼지 관리 미흡",
       "detail": "",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 81
     },
     {
       "id": "S08-04",
@@ -524,7 +1039,14 @@
       "no": 4,
       "label": "금강·미호천 수질 악화",
       "detail": "수자원 관리 취약",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 71
     },
     {
       "id": "S08-05",
@@ -532,7 +1054,14 @@
       "no": 5,
       "label": "녹지·도시숲 관리 부족",
       "detail": "",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 57
     },
     {
       "id": "S08-06",
@@ -540,7 +1069,14 @@
       "no": 6,
       "label": "탄소중립·재생에너지 정책 한계",
       "detail": "",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 2,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 77
     },
     {
       "id": "S08-07",
@@ -548,7 +1084,14 @@
       "no": 7,
       "label": "친환경 교통·에너지 전환 지연",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 71
     },
     {
       "id": "S08-08",
@@ -556,7 +1099,14 @@
       "no": 8,
       "label": "기후위기 대응 전략 부재",
       "detail": "",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 78
     },
     {
       "id": "S09-01",
@@ -564,7 +1114,14 @@
       "no": 1,
       "label": "농촌 고령화와 청년 농업인 부재",
       "detail": "",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 78
     },
     {
       "id": "S09-02",
@@ -572,7 +1129,14 @@
       "no": 2,
       "label": "전통 농업 경쟁력 약화",
       "detail": "기후변화 대응 부족",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 71
     },
     {
       "id": "S09-03",
@@ -580,15 +1144,29 @@
       "no": 3,
       "label": "지역특산품 지속가능성 위기",
       "detail": "복숭아 등 생산 불안정",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 76
     },
     {
       "id": "S09-04",
       "sector": "S09",
       "no": 4,
-      "label": "농촌",
-      "detail": "신도심 불균형 심화",
-      "weight": 5
+      "label": "농촌-신도심 불균형 심화",
+      "detail": "",
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 78
     },
     {
       "id": "S09-05",
@@ -596,7 +1174,14 @@
       "no": 5,
       "label": "스마트농업 도입 부족",
       "detail": "첨단농업 전환 미흡",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 62
     },
     {
       "id": "S09-06",
@@ -604,7 +1189,14 @@
       "no": 6,
       "label": "도농상생 정책 부재",
       "detail": "로컬푸드·직매장 활성화 한계",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 1
+      },
+      "severity": 63
     },
     {
       "id": "S09-07",
@@ -612,7 +1204,14 @@
       "no": 7,
       "label": "도시농업 확산 한계",
       "detail": "시민 참여형 프로그램 부족",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 3,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 52
     },
     {
       "id": "S09-08",
@@ -620,7 +1219,14 @@
       "no": 8,
       "label": "미래도시농업 전략 부재",
       "detail": "교육·관광·산업 융합 부족",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 56
     },
     {
       "id": "S09-09",
@@ -628,7 +1234,14 @@
       "no": 9,
       "label": "농촌 공동체 붕괴",
       "detail": "마을 재생 필요성",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 78
     },
     {
       "id": "S10-01",
@@ -636,7 +1249,14 @@
       "no": 1,
       "label": "스마트시티 국가시범도시 성과와 한계",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 71
     },
     {
       "id": "S10-02",
@@ -644,7 +1264,14 @@
       "no": 2,
       "label": "자율주행차 실증사업 지속가능성",
       "detail": "",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 60
     },
     {
       "id": "S10-03",
@@ -652,7 +1279,14 @@
       "no": 3,
       "label": "양자산업 투자와 지역 연계 실패",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 66
     },
     {
       "id": "S10-04",
@@ -660,7 +1294,14 @@
       "no": 4,
       "label": "데이터 기반 행정서비스 도입 지연",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S10-05",
@@ -668,7 +1309,14 @@
       "no": 5,
       "label": "AI·빅데이터 행정혁신 부족",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S10-06",
@@ -676,7 +1324,14 @@
       "no": 6,
       "label": "디지털 헬스케어 부재",
       "detail": "스마트의료 인프라 한계",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 76
     },
     {
       "id": "S10-07",
@@ -684,7 +1339,14 @@
       "no": 7,
       "label": "디지털 격차 확대",
       "detail": "읍면지역 ICT 소외",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 4,
+        "autonomyGap": 1
+      },
+      "severity": 68
     },
     {
       "id": "S11-01",
@@ -692,7 +1354,14 @@
       "no": 1,
       "label": "국제기구·글로벌 기관 유치 미흡",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 2,
+        "trajectory": 4,
+        "autonomyGap": 5
+      },
+      "severity": 74
     },
     {
       "id": "S11-02",
@@ -700,7 +1369,14 @@
       "no": 2,
       "label": "외국인 친화적 정주환경 부족",
       "detail": "교육·의료·문화 인프라 부족",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S11-03",
@@ -708,7 +1384,14 @@
       "no": 3,
       "label": "국제교육·글로벌 캠퍼스 부재",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 3
+      },
+      "severity": 71
     },
     {
       "id": "S11-04",
@@ -716,7 +1399,14 @@
       "no": 4,
       "label": "국제 문화·예술 교류 취약",
       "detail": "",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 51
     },
     {
       "id": "S11-05",
@@ -724,7 +1414,14 @@
       "no": 5,
       "label": "도시브랜드 글로벌 확장 실패",
       "detail": "",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 51
     },
     {
       "id": "S11-06",
@@ -732,7 +1429,14 @@
       "no": 6,
       "label": "한글문화도시 국제화 전략 미비",
       "detail": "",
-      "weight": 5
+      "weight": 5,
+      "assess": {
+        "structural": 3,
+        "felt": 2,
+        "trajectory": 3,
+        "autonomyGap": 2
+      },
+      "severity": 51
     },
     {
       "id": "S12-01",
@@ -740,7 +1444,14 @@
       "no": 1,
       "label": "아파트 밀집지역 재난 취약성",
       "detail": "",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 83
     },
     {
       "id": "S12-02",
@@ -748,7 +1459,14 @@
       "no": 2,
       "label": "소방·구급 인프라 부족",
       "detail": "신도시 확장 대비 미흡",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 5,
+        "felt": 5,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 83
     },
     {
       "id": "S12-03",
@@ -756,7 +1474,14 @@
       "no": 3,
       "label": "자연재해 대응 한계",
       "detail": "지진·홍수 위험 대비 부족",
-      "weight": 5
+      "weight": 8,
+      "assess": {
+        "structural": 4,
+        "felt": 4,
+        "trajectory": 5,
+        "autonomyGap": 3
+      },
+      "severity": 81
     },
     {
       "id": "S12-04",
@@ -764,7 +1489,14 @@
       "no": 4,
       "label": "재난 컨트롤타워 기능 미비",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 4,
+        "autonomyGap": 2
+      },
+      "severity": 67
     },
     {
       "id": "S12-05",
@@ -772,7 +1504,14 @@
       "no": 5,
       "label": "시민 안전문화 확산 부족",
       "detail": "",
-      "weight": 5
+      "weight": 6,
+      "assess": {
+        "structural": 3,
+        "felt": 4,
+        "trajectory": 3,
+        "autonomyGap": 1
+      },
+      "severity": 57
     },
     {
       "id": "S12-06",
@@ -780,7 +1519,14 @@
       "no": 6,
       "label": "기후위기와 재난대응 체계 부재",
       "detail": "",
-      "weight": 5
+      "weight": 7,
+      "assess": {
+        "structural": 4,
+        "felt": 3,
+        "trajectory": 5,
+        "autonomyGap": 2
+      },
+      "severity": 72
     }
   ]
 }

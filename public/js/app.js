@@ -1,14 +1,22 @@
 /* ThirdBrain — 세종시 12대 섹터 진단·공약 네트워크
  *
- * 바깥 고리에 진단(문제, ●), 안쪽 고리에 공약(해법, ■)을 놓고
- * "어느 공약이 어느 진단을 해소하는가"를 선으로 잇는다.
- * 공약이 하나도 닿지 않은 진단은 붉게 남는다 — 그것이 공약 공백 지점이다.
- * 모든 노드는 섹터 → 대영역 → 시 라는 수렴축을 따라 하나의 핵심점으로 모인다.
+ * 배치는 뇌(top view) 형태다.
+ *   피질(바깥)  = 진단 97 — 문제는 표면에 드러난다
+ *   백질(안쪽)  = 공약 54 — 해법은 안에서 연결한다
+ *   좌반구 = 물적 기반(산업·기술·공간·환경·농업·안전)
+ *   우반구 = 사람과 위상(행정수도·문화·국제화·교육·복지·보건)
+ *   중심   = 세종시. 모든 축이 여기로 수렴한다.
+ *
+ * 노드를 선택하면 연결된 노드가 홉 거리 순으로 차례차례 점등된다(신경 발화).
  */
 'use strict';
 
 const SEV_W = { low: 1, mid: 3, high: 7, critical: 14 };
 const STATUS_ORDER = ['good', 'warning', 'serious', 'critical'];
+const REL_TYPES = new Set(['resolves', 'synergy', 'dependency', 'conflict']);
+
+/** 대응 공약 수에 따른 위험 감쇄. 공약 하나가 위험을 다 없애지는 못한다. */
+const DAMP = [0, 0.18, 0.30, 0.38];
 
 const state = {
   raw: null,
@@ -16,7 +24,7 @@ const state = {
   byId: new Map(),
   sim: null,
   focus: null,
-  view: 'all',              // all | gap | conflict
+  view: 'all',
   hiddenStatus: new Set(),
   hiddenLinkTypes: new Set(),
   hiddenKinds: new Set(),
@@ -32,9 +40,44 @@ const esc = (s) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => new Intl.NumberFormat('ko-KR').format(n);
 
-/* ─────────────────────────────────────────────────────────────
-   1. 모델
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   1. 뇌 형상 — 노드 배치와 외곽선이 같은 함수를 쓴다
+   ═════════════════════════════════════════════════════════════ */
+
+const BRAIN = { A: 470, B: 560, GAP: 30 };
+
+/** s = -1(전두) … +1(후두) 에서의 반구 반폭. 뒤로 갈수록 좁아진다(후두엽). */
+const halfWidth = (s) =>
+  BRAIN.A * Math.sqrt(Math.max(0, 1 - s * s)) * (1 - 0.13 * s);
+
+/** side: -1 좌반구 / +1 우반구, s: 앞뒤, d: 0=정중선 … 1=피질 경계 */
+function brainPoint(side, s, d) {
+  const w = Math.max(BRAIN.GAP + 8, halfWidth(s));
+  return { x: side * (BRAIN.GAP + d * (w - BRAIN.GAP)), y: s * BRAIN.B };
+}
+
+const HEMISPHERE = {
+  '-1': ['S02', 'S10', 'S01', 'S08', 'S09', 'S12'],
+  '1':  ['S03', 'S04', 'S11', 'S05', 'S06', 'S07'],
+};
+const S_MIN = -0.84, S_MAX = 0.84;
+
+/** 섹터별 앞뒤 구간을 계산해 둔다. */
+function sectorSpans() {
+  const map = new Map();
+  for (const side of [-1, 1]) {
+    const list = HEMISPHERE[String(side)];
+    const w = (S_MAX - S_MIN) / list.length;
+    list.forEach((id, k) => {
+      map.set(id, { side, s0: S_MIN + k * w + w * 0.06, s1: S_MIN + (k + 1) * w - w * 0.06 });
+    });
+  }
+  return map;
+}
+
+/* ═════════════════════════════════════════════════════════════
+   2. 모델 — 정밀 진단(4축 평가) → 잔여위험 → 상태
+   ═════════════════════════════════════════════════════════════ */
 
 function kpiRatio(k) {
   const t = +k.target, c = +k.current;
@@ -42,52 +85,38 @@ function kpiRatio(k) {
   return k.dir === 'down' ? (c === 0 ? 1 : t / c) : c / t;
 }
 
-/** 신호 부하 — 심각도 가중 × 건수의 로그. 한 건의 대규모 청원이 전체를 압도하지 않게 한다. */
+/** 심각도 가중 × 건수의 로그. 한 건의 대규모 청원이 전체를 압도하지 않게 한다. */
 function signalLoad(signals) {
   return signals.reduce(
     (sum, s) => sum + (SEV_W[s.severity] || 1) * (1 + Math.log10(1 + (s.count || 1))), 0);
 }
 
-/** 진단 상태 = 공약 대응 여부 × 시민 신호.
- *  공약이 하나도 겨냥하지 않은 진단이 곧 '미대응'이고, 화면에서 붉게 남는다.
- *  공약이 있는데도 위기·고심각 신호가 쌓인 지점은 '현장 압력'으로 따로 표시한다 —
- *  대응을 했는데도 현장이 풀리지 않는 곳이라 성격이 다르기 때문이다. */
-function diagnosisStatus(coverage, signals) {
-  if (coverage === 0) return 'critical';
-
-  const nCrit = signals.filter((s) => s.severity === 'critical').length;
-  const nHigh = signals.filter((s) => s.severity === 'high').length;
-  if (nCrit >= 1 || nHigh >= 2) return 'serious';
-
-  return coverage === 1 ? 'warning' : 'good';
+/** 잔여위험 = 구조적 심각도 × (1 − 대응 감쇄) + 현장 신호 가산.
+ *  "얼마나 심각한가"가 아니라 "대응을 감안하고도 얼마나 남아 있는가"를 본다. */
+function residualRisk(severity, coverage, load) {
+  const damp = DAMP[Math.min(DAMP.length - 1, coverage)];
+  return Math.min(100, (severity || 50) * (1 - damp) + Math.min(12, load * 0.6));
 }
 
-/** 하위 노드 상태를 비중 가중 평균해 상위(섹터·영역) 상태를 낸다. */
+const riskStatus = (r) =>
+  r >= 72 ? 'critical' : r >= 58 ? 'serious' : r >= 44 ? 'warning' : 'good';
+
 function rollUpStatus(children) {
-  const withStatus = children.filter((c) => c.status);
-  if (!withStatus.length) return 'good';
-  const wSum = withStatus.reduce((a, c) => a + (c.weight || 5), 0);
-  const score = withStatus.reduce(
+  const ws = children.filter((c) => c.status);
+  if (!ws.length) return 'good';
+  const wSum = ws.reduce((a, c) => a + (c.weight || 5), 0);
+  const score = ws.reduce(
     (a, c) => a + STATUS_ORDER.indexOf(c.status) * (c.weight || 5), 0) / wSum;
-  const nCrit = withStatus.filter((c) => c.status === 'critical').length;
+  const nCrit = ws.filter((c) => c.status === 'critical').length;
   let i = Math.round(score);
   if (nCrit >= 3) i = Math.max(i, 3);
   else if (nCrit >= 1) i = Math.max(i, 2);
   return STATUS_ORDER[Math.min(3, i)];
 }
 
-const RADII = { domain: 165, sector: 330, pledge: 470, diagnosis: 660 };
-const rad = (deg) => (deg - 90) * Math.PI / 180;
-
-/** 같은 섹터에 속한 노드를 섹터 방위각 주변 부채꼴에 고르게 앉힌다. */
-function seatAngle(baseAngle, seat, total, maxSpread) {
-  if (total <= 1) return baseAngle;
-  const spread = Math.min(maxSpread, 5 + total * 2.6);
-  return baseAngle + (seat - (total - 1) / 2) * (spread / (total - 1));
-}
-
 function buildModel(raw) {
   const { taxonomy, diagnoses, pledges, links, signals } = raw;
+  const spans = sectorSpans();
 
   const sigByDiag = new Map();
   for (const s of signals) {
@@ -97,104 +126,97 @@ function buildModel(raw) {
     }
   }
 
-  // 공약 → 진단 (resolves) 을 양방향 색인해 둔다
   const pledgesByDiag = new Map();
-  const crossDeg = new Map();
   for (const p of pledges) {
     for (const d of p.resolves || []) {
       if (!pledgesByDiag.has(d)) pledgesByDiag.set(d, []);
       pledgesByDiag.get(d).push(p.id);
     }
   }
+  const crossDeg = new Map();
   for (const l of links) {
     crossDeg.set(l.source, (crossDeg.get(l.source) || 0) + 1);
     crossDeg.set(l.target, (crossDeg.get(l.target) || 0) + 1);
   }
 
-  const domainById = new Map(taxonomy.domains.map((d) => [d.id, d]));
   const sectorById = new Map(taxonomy.sectors.map((s) => [s.id, s]));
-
   const nodes = [];
 
   nodes.push({
     id: taxonomy.city.id, level: 'city', label: taxonomy.city.label,
-    sublabel: taxonomy.city.sublabel, color: '#ffffff', r: 30,
+    sublabel: taxonomy.city.sublabel, color: '#ffffff', r: 28,
     tx: 0, ty: 0, fx: 0, fy: 0,
   });
 
-  for (const d of taxonomy.domains) {
-    nodes.push({
-      id: d.id, level: 'domain', label: d.label, sublabel: d.en, color: d.color,
-      angle: d.angle,
-      tx: Math.cos(rad(d.angle)) * RADII.domain,
-      ty: Math.sin(rad(d.angle)) * RADII.domain,
-    });
-  }
-
+  // ── 섹터 (피질과 백질 사이)
   for (const s of taxonomy.sectors) {
+    const sp = spans.get(s.id);
+    const p = brainPoint(sp.side, (sp.s0 + sp.s1) / 2, 0.62);
     nodes.push({
       id: s.id, level: 'sector', no: s.no, label: s.label, color: s.color,
-      domain: s.domain, angle: s.angle,
-      tx: Math.cos(rad(s.angle)) * RADII.sector,
-      ty: Math.sin(rad(s.angle)) * RADII.sector,
+      domain: s.domain, side: sp.side, span: sp,
+      tx: p.x, ty: p.y, x: p.x, y: p.y,
     });
   }
 
-  // ── 공약 (안쪽 고리)
-  const plSeat = new Map();
-  const plTotal = new Map();
-  for (const p of pledges) plTotal.set(p.sector, (plTotal.get(p.sector) || 0) + 1);
-
+  // ── 공약 (백질 — 안쪽)
+  const plBySector = new Map();
   for (const p of pledges) {
-    const sec = sectorById.get(p.sector);
-    if (!sec) continue;
-    const seat = plSeat.get(p.sector) || 0;
-    plSeat.set(p.sector, seat + 1);
-    const a = seatAngle(sec.angle, seat, plTotal.get(p.sector), 22);
-    const tx = Math.cos(rad(a)) * RADII.pledge;
-    const ty = Math.sin(rad(a)) * RADII.pledge;
-    const deg = crossDeg.get(p.id) || 0;
-    nodes.push({
-      ...p,
-      level: 'pledge', kind: 'pledge',
-      color: sec.color, domain: sec.domain, sectorLabel: sec.label,
-      crossDeg: deg,
-      resolveCount: (p.resolves || []).length,
-      signals: [],
-      status: null,                       // 실행 데이터가 없으므로 상태를 단정하지 않는다
-      r: Math.max(8, Math.min(24,
-        7 + 1.3 * Math.sqrt(p.weight || 5) + 1.7 * Math.sqrt((p.resolves || []).length) + 0.9 * Math.sqrt(deg))),
-      tx, ty, x: tx + (Math.random() - 0.5) * 30, y: ty + (Math.random() - 0.5) * 30,
+    if (!plBySector.has(p.sector)) plBySector.set(p.sector, []);
+    plBySector.get(p.sector).push(p);
+  }
+  for (const [sid, list] of plBySector) {
+    const sp = spans.get(sid);
+    const sec = sectorById.get(sid);
+    if (!sp || !sec) continue;
+    list.forEach((p, j) => {
+      const s = sp.s0 + ((j + 0.5) / list.length) * (sp.s1 - sp.s0);
+      const d = 0.30 + 0.17 * (j % 3) / 2;
+      const pt = brainPoint(sp.side, s, d);
+      const deg = crossDeg.get(p.id) || 0;
+      nodes.push({
+        ...p,
+        level: 'pledge', kind: 'pledge',
+        color: sec.color, domain: sec.domain, sectorLabel: sec.label, side: sp.side,
+        crossDeg: deg, resolveCount: (p.resolves || []).length,
+        signals: [], status: null,
+        r: Math.max(8, Math.min(23,
+          7 + 1.3 * Math.sqrt(p.weight || 5) + 1.7 * Math.sqrt((p.resolves || []).length) + 0.9 * Math.sqrt(deg))),
+        tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
+      });
     });
   }
 
-  // ── 진단 (바깥 고리)
-  const dgSeat = new Map();
-  const dgTotal = new Map();
-  for (const d of diagnoses) dgTotal.set(d.sector, (dgTotal.get(d.sector) || 0) + 1);
-
+  // ── 진단 (피질 — 바깥 표면)
+  const dgBySector = new Map();
   for (const d of diagnoses) {
-    const sec = sectorById.get(d.sector);
-    if (!sec) continue;
-    const seat = dgSeat.get(d.sector) || 0;
-    dgSeat.set(d.sector, seat + 1);
-    const a = seatAngle(sec.angle, seat, dgTotal.get(d.sector), 26);
-    const tx = Math.cos(rad(a)) * RADII.diagnosis;
-    const ty = Math.sin(rad(a)) * RADII.diagnosis;
+    if (!dgBySector.has(d.sector)) dgBySector.set(d.sector, []);
+    dgBySector.get(d.sector).push(d);
+  }
+  for (const [sid, list] of dgBySector) {
+    const sp = spans.get(sid);
+    const sec = sectorById.get(sid);
+    if (!sp || !sec) continue;
+    list.forEach((d, i) => {
+      const s = sp.s0 + ((i + 0.5) / list.length) * (sp.s1 - sp.s0);
+      const depth = 0.78 + 0.15 * ((i % 3) / 2);
+      const pt = brainPoint(sp.side, s, depth);
 
-    const sigs = sigByDiag.get(d.id) || [];
-    const load = signalLoad(sigs);
-    const cover = pledgesByDiag.get(d.id) || [];
-    nodes.push({
-      ...d,
-      level: 'diagnosis', kind: 'diagnosis',
-      color: sec.color, domain: sec.domain, sectorLabel: sec.label,
-      signals: sigs, signalLoad: load,
-      coveredBy: cover, coverage: cover.length,
-      status: diagnosisStatus(cover.length, sigs),
-      r: Math.max(7, Math.min(24,
-        6 + 1.1 * Math.sqrt(d.weight || 5) + 5.2 * Math.log10(1 + load) + 1.0 * Math.sqrt(cover.length))),
-      tx, ty, x: tx + (Math.random() - 0.5) * 30, y: ty + (Math.random() - 0.5) * 30,
+      const sigs = sigByDiag.get(d.id) || [];
+      const load = signalLoad(sigs);
+      const cover = pledgesByDiag.get(d.id) || [];
+      const risk = residualRisk(d.severity, cover.length, load);
+      nodes.push({
+        ...d,
+        level: 'diagnosis', kind: 'diagnosis',
+        color: sec.color, domain: sec.domain, sectorLabel: sec.label, side: sp.side,
+        signals: sigs, signalLoad: load,
+        coveredBy: cover, coverage: cover.length,
+        risk, status: riskStatus(risk),
+        r: Math.max(7, Math.min(25,
+          6 + 0.10 * risk + 3.0 * Math.log10(1 + load) + 0.8 * Math.sqrt(cover.length))),
+        tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
+      });
     });
   }
 
@@ -207,29 +229,47 @@ function buildModel(raw) {
     s.diagnoses = diags;
     s.pledges = pls;
     s.status = rollUpStatus(diags);
+    s.risk = diags.length ? diags.reduce((a, k) => a + k.risk, 0) / diags.length : 0;
+    s.severity = diags.length ? diags.reduce((a, k) => a + (k.severity || 0), 0) / diags.length : 0;
     s.signalLoad = diags.reduce((a, k) => a + k.signalLoad, 0);
     s.signals = [...new Set(diags.flatMap((k) => k.signals))];
     s.uncovered = diags.filter((k) => k.coverage === 0).length;
+    s.atRisk = diags.filter((k) => k.status === 'critical').length;
     s.coverage = diags.length ? 1 - s.uncovered / diags.length : 0;
-    s.r = Math.max(14, Math.min(30,
-      13 + 1.5 * Math.sqrt(diags.length + pls.length) + 3.0 * Math.log10(1 + s.signalLoad)));
+    s.r = Math.max(14, Math.min(28, 12 + 0.13 * s.risk));
   }
-  for (const d of nodes.filter((n) => n.level === 'domain')) {
-    const kids = nodes.filter((n) => n.level === 'sector' && n.domain === d.id);
-    d.children = kids;
-    d.status = rollUpStatus(kids.map((k) => ({ status: k.status, weight: k.diagnoses.length })));
-    d.signalLoad = kids.reduce((a, k) => a + k.signalLoad, 0);
-    d.diagCount = kids.reduce((a, k) => a + k.diagnoses.length, 0);
-    d.pledgeCount = kids.reduce((a, k) => a + k.pledges.length, 0);
-    d.uncovered = kids.reduce((a, k) => a + k.uncovered, 0);
-    d.r = Math.max(20, Math.min(34, 19 + 3.4 * Math.log10(1 + d.signalLoad)));
+
+  // 영역 노드는 소속 섹터의 무게중심을 중심 쪽으로 당겨 배치한다(뇌량 부근)
+  for (const d of nodes.filter((n) => n.level === 'domain' || false)) { /* noop */ }
+  for (const dom of taxonomy.domains) {
+    const kids = nodes.filter((n) => n.level === 'sector' && n.domain === dom.id);
+    const cx = kids.reduce((a, k) => a + k.tx, 0) / kids.length;
+    const cy = kids.reduce((a, k) => a + k.ty, 0) / kids.length;
+    nodes.push({
+      id: dom.id, level: 'domain', label: dom.label, sublabel: dom.en, color: dom.color,
+      children: kids,
+      status: rollUpStatus(kids.map((k) => ({ status: k.status, weight: k.diagnoses.length }))),
+      risk: kids.reduce((a, k) => a + k.risk, 0) / kids.length,
+      diagCount: kids.reduce((a, k) => a + k.diagnoses.length, 0),
+      pledgeCount: kids.reduce((a, k) => a + k.pledges.length, 0),
+      uncovered: kids.reduce((a, k) => a + k.uncovered, 0),
+      atRisk: kids.reduce((a, k) => a + k.atRisk, 0),
+      signalLoad: kids.reduce((a, k) => a + k.signalLoad, 0),
+      r: 21,
+      tx: cx * 0.36, ty: cy * 0.42, x: cx * 0.36, y: cy * 0.42,
+    });
   }
-  const city = byId.get(taxonomy.city.id);
+  const byId2 = new Map(nodes.map((n) => [n.id, n]));
+  for (const s of nodes.filter((n) => n.level === 'sector')) s.domainNode = byId2.get(s.domain);
+
+  const city = byId2.get(taxonomy.city.id);
   city.children = nodes.filter((n) => n.level === 'domain');
   city.status = rollUpStatus(city.children.map((k) => ({ status: k.status, weight: k.diagCount })));
+  city.risk = city.children.reduce((a, k) => a + k.risk, 0) / city.children.length;
   city.diagCount = city.children.reduce((a, k) => a + k.diagCount, 0);
   city.pledgeCount = city.children.reduce((a, k) => a + k.pledgeCount, 0);
   city.uncovered = city.children.reduce((a, k) => a + k.uncovered, 0);
+  city.atRisk = city.children.reduce((a, k) => a + k.atRisk, 0);
 
   // ── 링크
   const gLinks = [];
@@ -241,19 +281,19 @@ function buildModel(raw) {
   }
   for (const p of pledges) {
     for (const d of p.resolves || []) {
-      if (byId.has(d)) gLinks.push({ source: p.id, target: d, type: 'resolves', weight: 0.8 });
+      if (byId2.has(d)) gLinks.push({ source: p.id, target: d, type: 'resolves', weight: 0.8 });
     }
   }
   for (const l of links) {
-    if (byId.has(l.source) && byId.has(l.target)) gLinks.push({ ...l });
+    if (byId2.has(l.source) && byId2.has(l.target)) gLinks.push({ ...l });
   }
 
-  return { nodes, links: gLinks, byId, sectorById, domainById };
+  return { nodes, links: gLinks, byId: byId2, sectorById };
 }
 
-/* ─────────────────────────────────────────────────────────────
-   2. 시각 규칙
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   3. 시각 규칙
+   ═════════════════════════════════════════════════════════════ */
 
 const statusMeta = () => Object.fromEntries(state.raw.taxonomy.status.map((s) => [s.id, s]));
 
@@ -263,22 +303,24 @@ function nodeFill(n) {
   if (n.status === 'serious') return st.serious.color;
   return n.color;
 }
-
 const isAlerting = (n) => n.status === 'critical' || n.status === 'serious';
 
-/* ─────────────────────────────────────────────────────────────
-   3. 렌더링
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   4. 캔버스
+   ═════════════════════════════════════════════════════════════ */
 
 const svg = d3.select('#graph');
-let gRoot, gLink, gNode, tooltipEl;
+let gRoot, gBrain, gLink, gNode, tooltipEl;
 
 function initCanvas() {
   svg.selectAll('*').remove();
   gRoot = svg.append('g').attr('class', 'root');
+  gBrain = gRoot.append('g').attr('class', 'brain').attr('aria-hidden', 'true');
   gLink = gRoot.append('g').attr('class', 'links');
   gNode = gRoot.append('g').attr('class', 'nodes');
   tooltipEl = $('#tooltip');
+
+  drawBrain();
 
   state.zoom = d3.zoom()
     .scaleExtent([0.2, 4])
@@ -293,31 +335,72 @@ function initCanvas() {
      .on('click', (ev) => { if (ev.target.tagName === 'svg') clearFocus(); });
 }
 
+/** 노드 배치와 같은 halfWidth() 를 쓰므로 외곽선과 피질 노드가 정확히 맞물린다. */
+function drawBrain() {
+  const line = (pts) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+
+  for (const side of [-1, 1]) {
+    const outer = [];
+    for (let i = 0; i <= 90; i++) {
+      const s = -0.995 + (i / 90) * 1.99;
+      outer.push(brainPoint(side, s, 1));
+    }
+    const d = line(outer) +
+      `L${(side * BRAIN.GAP).toFixed(1)},${(0.995 * BRAIN.B).toFixed(1)}` +
+      `L${(side * BRAIN.GAP).toFixed(1)},${(-0.995 * BRAIN.B).toFixed(1)}Z`;
+    gBrain.append('path').attr('class', 'brain-lobe').attr('d', d);
+
+    // 뇌구(sulci) — 피질 결을 암시하는 곡선
+    for (const [depth, from, to, phase] of [
+      [0.32, -0.72, 0.62, 0.4], [0.48, -0.80, 0.74, 1.9],
+      [0.63, -0.84, 0.80, 3.1], [0.78, -0.86, 0.84, 4.6],
+    ]) {
+      const pts = [];
+      for (let i = 0; i <= 60; i++) {
+        const s = from + (i / 60) * (to - from);
+        pts.push(brainPoint(side, s, depth + 0.035 * Math.sin(s * 7 + phase)));
+      }
+      gBrain.append('path').attr('class', 'brain-sulcus').attr('d', line(pts));
+    }
+  }
+
+  // 소뇌 — 뒤쪽 두 덩이
+  for (const side of [-1, 1]) {
+    gBrain.append('ellipse').attr('class', 'brain-cerebellum')
+      .attr('cx', side * 118).attr('cy', BRAIN.B * 1.02)
+      .attr('rx', 104).attr('ry', 52)
+      .attr('transform', `rotate(${side * 10} ${side * 118} ${BRAIN.B * 1.02})`);
+  }
+  // 뇌간
+  gBrain.append('path').attr('class', 'brain-stem')
+    .attr('d', `M-26,${BRAIN.B * 0.98} L26,${BRAIN.B * 0.98} L17,${BRAIN.B * 1.30} L-17,${BRAIN.B * 1.30} Z`);
+
+  // 정중열
+  gBrain.append('line').attr('class', 'brain-midline')
+    .attr('x1', 0).attr('y1', -BRAIN.B * 0.99).attr('x2', 0).attr('y2', BRAIN.B * 0.99);
+
+  gBrain.append('text').attr('class', 'brain-hemi-label')
+    .attr('x', -BRAIN.A * 0.72).attr('y', -BRAIN.B * 0.93)
+    .attr('text-anchor', 'middle').text('좌반구 · 물적 기반');
+  gBrain.append('text').attr('class', 'brain-hemi-label')
+    .attr('x', BRAIN.A * 0.72).attr('y', -BRAIN.B * 0.93)
+    .attr('text-anchor', 'middle').text('우반구 · 사람과 위상');
+}
+
 function simulate() {
-  const strong = (n) =>
-    n.level === 'domain' ? 0.55 : n.level === 'sector' ? 0.42 : 0.11;
+  // 뇌 형상을 유지해야 하므로 위치력을 강하게 두고, 링크는 국소 장력만 준다.
+  const pull = (n) =>
+    n.level === 'city' ? 1 : n.level === 'domain' ? 0.6 : n.level === 'sector' ? 0.55 : 0.34;
 
   state.sim = d3.forceSimulation(state.nodes)
     .force('link', d3.forceLink(state.links).id((d) => d.id)
-      .distance((l) => {
-        if (l.type === 'converge') {
-          const lv = l.source.level || '';
-          return lv === 'diagnosis' ? 330 : lv === 'pledge' ? 145 : lv === 'sector' ? 165 : 175;
-        }
-        return l.type === 'resolves' ? 175 : 190;
-      })
-      .strength((l) => {
-        if (l.type === 'converge') return l.source.level === 'sector' ? 0.6 : 0.16;
-        return l.type === 'resolves' ? 0.05 : 0.035 * (l.weight || 0.5);
-      }))
-    .force('charge', d3.forceManyBody().strength((n) =>
-      n.level === 'diagnosis' ? -190
-        : n.level === 'pledge' ? -260
-        : n.level === 'sector' ? -900 : -1600).distanceMax(700))
-    .force('collide', d3.forceCollide().radius((n) => n.r + 6).iterations(2))
-    .force('x', d3.forceX((n) => (n.tx ?? 0)).strength(strong))
-    .force('y', d3.forceY((n) => (n.ty ?? 0)).strength(strong))
-    .alpha(1).alphaDecay(0.017);
+      .distance((l) => (l.type === 'converge' ? 130 : l.type === 'resolves' ? 150 : 170))
+      .strength((l) => (l.type === 'converge' ? 0.05 : 0.02)))
+    .force('charge', d3.forceManyBody().strength(-90).distanceMax(240))
+    .force('collide', d3.forceCollide().radius((n) => n.r + 5).iterations(3))
+    .force('x', d3.forceX((n) => n.tx ?? 0).strength(pull))
+    .force('y', d3.forceY((n) => n.ty ?? 0).strength(pull))
+    .alpha(1).alphaDecay(0.028);
 }
 
 function render() {
@@ -331,11 +414,11 @@ function render() {
     .attr('stroke-width', (l) => {
       if (l.type === 'converge') {
         const lv = l.source.level || '';
-        return lv === 'domain' ? 2.4 : lv === 'sector' ? 1.6 : 0.8;
+        return lv === 'domain' ? 2.2 : lv === 'sector' ? 1.5 : 0.7;
       }
-      return l.type === 'resolves' ? 1.4 : 1 + 2 * (l.weight || 0.5);
+      return l.type === 'resolves' ? 1.3 : 1 + 1.8 * (l.weight || 0.5);
     })
-    .attr('stroke-opacity', (l) => (l.type === 'converge' ? 0.45 : l.type === 'resolves' ? 0.5 : 0.8));
+    .attr('stroke-opacity', (l) => (l.type === 'converge' ? 0.32 : l.type === 'resolves' ? 0.45 : 0.7));
 
   const nodeSel = gNode.selectAll('g.node').data(state.nodes, (n) => n.id);
   nodeSel.exit().remove();
@@ -344,7 +427,7 @@ function render() {
     .attr('class', (n) => `node node-${n.level}`)
     .call(d3.drag()
       .on('start', (ev, n) => {
-        if (!ev.active) state.sim.alphaTarget(0.2).restart();
+        if (!ev.active) state.sim.alphaTarget(0.15).restart();
         n.fx = n.x; n.fy = n.y;
       })
       .on('drag', (ev, n) => { n.fx = ev.x; n.fy = ev.y; })
@@ -357,6 +440,7 @@ function render() {
     .on('pointermove', (ev) => moveTooltip(ev))
     .on('pointerleave', hideTooltip);
 
+  enter.append('circle').attr('class', 'halo');
   enter.append('circle').attr('class', 'pulse');
   enter.append('circle').attr('class', 'shape-circle node-shape');
   enter.append('rect').attr('class', 'shape-rect node-shape');
@@ -366,9 +450,10 @@ function render() {
   const all = enter.merge(nodeSel);
   const isPledge = (n) => n.level === 'pledge';
 
+  all.select('circle.halo').attr('r', (n) => n.r + 3);
   all.select('circle.pulse')
     .attr('r', (n) => n.r + 2)
-    .style('display', (n) => (n.status === 'critical' ? null : 'none'));
+    .style('display', (n) => (n.status === 'critical' && n.level === 'diagnosis' ? null : 'none'));
 
   all.select('circle.shape-circle')
     .style('display', (n) => (isPledge(n) ? 'none' : null))
@@ -377,7 +462,6 @@ function render() {
     .attr('stroke', (n) => (isAlerting(n) ? st[n.status].color : 'var(--page)'))
     .attr('stroke-width', (n) => (isAlerting(n) ? 2 : 1.5));
 
-  // 공약은 사각형 — 색을 못 보는 상황에서도 진단과 구분된다
   all.select('rect.shape-rect')
     .style('display', (n) => (isPledge(n) ? null : 'none'))
     .attr('width', (n) => n.r * 1.75).attr('height', (n) => n.r * 1.75)
@@ -389,8 +473,7 @@ function render() {
   all.select('text.status-glyph')
     .attr('y', 0.5)
     .attr('fill', (n) => (n.status === 'warning' ? '#241c00' : '#2a0808'))
-    .style('display', (n) =>
-      (n.status && n.status !== 'good' && !isPledge(n)) ? null : 'none')
+    .style('display', (n) => (n.status && n.status !== 'good' && !isPledge(n) ? null : 'none'))
     .style('font-size', (n) => Math.min(11, Math.max(7, n.r * 0.7)) + 'px')
     .text((n) => (n.status ? st[n.status].icon : ''));
 
@@ -414,110 +497,185 @@ function render() {
   applyLabelVisibility();
 }
 
+/* ═════════════════════════════════════════════════════════════
+   5. 가시성 · 점등(신경 발화)
+   ═════════════════════════════════════════════════════════════ */
+
+/** 선택 노드에서 의미 관계(해소·시너지·의존·상충)만 따라 홉 거리를 잰다.
+ *  수렴축은 제외한다 — 포함하면 몇 홉 만에 전체가 켜져 초점이 사라진다. */
+function activationMap(startId, maxHop = 4) {
+  const adj = new Map();
+  const push = (a, b) => {
+    if (!adj.has(a)) adj.set(a, []);
+    adj.get(a).push(b);
+  };
+  for (const l of state.links) {
+    if (!REL_TYPES.has(l.type) || state.hiddenLinkTypes.has(l.type)) continue;
+    push(l.source.id, l.target.id);
+    push(l.target.id, l.source.id);
+  }
+  // 수렴축은 '내려가는' 방향으로만 넣는다. 섹터·영역·시 같은 중심점을 누르면
+  // 그 아래 전체가 발화하고, 진단·공약을 누를 때는 위로 역류하지 않는다.
+  for (const l of state.links) {
+    if (l.type !== 'converge' || state.hiddenLinkTypes.has('converge')) continue;
+    push(l.target.id, l.source.id);   // 부모 → 자식
+  }
+  const hop = new Map([[startId, 0]]);
+  let frontier = [startId];
+  for (let h = 1; h <= maxHop && frontier.length; h++) {
+    const next = [];
+    for (const id of frontier) {
+      for (const nb of adj.get(id) || []) {
+        if (hop.has(nb)) continue;
+        hop.set(nb, h);
+        next.push(nb);
+      }
+    }
+    frontier = next;
+  }
+  // 수렴축(섹터→영역→시)은 항상 1홉으로 함께 켠다
+  let cur = state.byId.get(startId);
+  let h = 1;
+  while (cur) {
+    const up = (cur.level === 'diagnosis' || cur.level === 'pledge') ? cur.sector
+      : cur.level === 'sector' ? cur.domain
+      : cur.level === 'domain' ? state.raw.taxonomy.city.id : null;
+    if (!up) break;
+    if (!hop.has(up)) hop.set(up, h);
+    cur = state.byId.get(up);
+    h++;
+  }
+  return hop;
+}
+
+/** 홉이 멀수록 약하게 켜진다 — 가까운 관계가 먼저, 더 밝게 보이도록. */
+const strengthAt = (hop) => Math.max(0.28, 1 - hop * 0.20);
+
 function applyVisibility() {
   const q = state.query.trim().toLowerCase();
-
-  const matchesQuery = (n) => {
-    if (!q) return true;
-    return [n.label, n.detail, n.sectorLabel]
-      .filter(Boolean).some((v) => String(v).toLowerCase().includes(q));
-  };
-
   const isLeaf = (n) => n.level === 'diagnosis' || n.level === 'pledge';
+
+  const matchesQuery = (n) => !q ||
+    [n.label, n.detail, n.sectorLabel].filter(Boolean)
+      .some((v) => String(v).toLowerCase().includes(q));
 
   const inView = (n) => {
     if (!isLeaf(n)) return true;
     if (state.hiddenKinds.has(n.kind)) return false;
     if (state.view === 'gap') return n.level === 'diagnosis' && n.coverage === 0;
+    if (state.view === 'risk') return n.level === 'diagnosis' && n.status === 'critical';
     if (state.view === 'conflict') {
       return state.links.some((l) =>
         l.type === 'conflict' && (l.source.id === n.id || l.target.id === n.id));
     }
     return true;
   };
-
   const passStatus = (n) => !n.status || !state.hiddenStatus.has(n.status);
 
   const visible = new Set();
   for (const n of state.nodes) {
-    const ok = isLeaf(n) ? (inView(n) && passStatus(n) && matchesQuery(n)) : true;
-    if (ok) visible.add(n.id);
+    if (!isLeaf(n) || (inView(n) && passStatus(n) && matchesQuery(n))) visible.add(n.id);
   }
 
-  let near = null;
-  if (state.focus) {
-    near = new Set([state.focus]);
-    for (const l of state.links) {
-      if (state.hiddenLinkTypes.has(l.type)) continue;
-      if (l.source.id === state.focus) near.add(l.target.id);
-      if (l.target.id === state.focus) near.add(l.source.id);
-    }
-    let cur = state.byId.get(state.focus);
-    while (cur) {
-      const up = isLeaf(cur) ? cur.sector
-        : cur.level === 'sector' ? cur.domain
-        : cur.level === 'domain' ? state.raw.taxonomy.city.id : null;
-      if (!up) break;
-      near.add(up);
-      cur = state.byId.get(up);
-    }
-  }
+  const hop = state.focus ? activationMap(state.focus) : null;
+
+  // 애니메이션 재시작을 위해 클래스를 먼저 걷어낸다
+  gNode.selectAll('g.node').classed('act', false);
+  gLink.selectAll('line').classed('act', false);
+  if (gNode.node()) gNode.node().getBoundingClientRect();
 
   gNode.selectAll('g.node')
-    .classed('dim', (n) => !visible.has(n.id) || (near && !near.has(n.id)));
+    .classed('dim', (n) => !visible.has(n.id) || (hop && !hop.has(n.id)))
+    .classed('act', (n) => !!hop && hop.has(n.id) && visible.has(n.id))
+    .classed('act-self', (n) => n.id === state.focus)
+    .style('--hop-delay', (n) => (hop && hop.has(n.id) ? (hop.get(n.id) * 0.105).toFixed(3) + 's' : null))
+    .style('--halo-peak', (n) => {
+      if (!hop || !hop.has(n.id)) return null;
+      return (strengthAt(hop.get(n.id)) * 0.95).toFixed(3);
+    })
+    .style('--halo-hold', (n) => {
+      if (!hop || !hop.has(n.id)) return null;
+      return (strengthAt(hop.get(n.id)) * 0.42).toFixed(3);
+    });
 
-  gLink.selectAll('line').classed('dim', (l) => {
-    if (state.hiddenLinkTypes.has(l.type)) return true;
-    if (!visible.has(l.source.id) || !visible.has(l.target.id)) return true;
-    if (state.view === 'conflict' && l.type === 'converge') return true;
-    if (near) return !(near.has(l.source.id) && near.has(l.target.id));
-    return false;
-  });
+  gLink.selectAll('line')
+    .classed('dim', (l) => {
+      if (state.hiddenLinkTypes.has(l.type)) return true;
+      if (!visible.has(l.source.id) || !visible.has(l.target.id)) return true;
+      if ((state.view === 'conflict' || state.view === 'risk') && l.type === 'converge') return true;
+      if (hop) return !(hop.has(l.source.id) && hop.has(l.target.id));
+      return false;
+    })
+    .classed('act', (l) => {
+      if (!hop || state.hiddenLinkTypes.has(l.type)) return false;
+      const a = hop.get(l.source.id), b = hop.get(l.target.id);
+      return a !== undefined && b !== undefined && Math.abs(a - b) === 1;
+    })
+    .each(function (l) {
+      if (!this.classList.contains('act')) {
+        this.style.removeProperty('--len');
+        this.style.removeProperty('--hop-delay');
+        return;
+      }
+      const len = Math.hypot(l.target.x - l.source.x, l.target.y - l.source.y) || 1;
+      const near = Math.min(hop.get(l.source.id), hop.get(l.target.id));
+      this.style.setProperty('--len', len.toFixed(1));
+      this.style.setProperty('--hop-delay', (near * 0.105).toFixed(3) + 's');
+    });
 }
 
 function applyLabelVisibility() {
   const k = state.transform.k;
   gNode.selectAll('text.node-label').style('display', (n) => {
     if (n.level === 'city' || n.level === 'domain') return null;
-    if (n.level === 'sector') return k >= 0.5 ? null : 'none';
+    if (n.level === 'sector') return k >= 0.45 ? null : 'none';
     if (state.focus === n.id) return null;
-    if (k >= 1.6) return null;
-    if (k >= 1.05 && n.r >= 13) return null;
-    return n.status === 'critical' && n.r >= 13 ? null : 'none';
+    if (k >= 1.5) return null;
+    if (k >= 1.0 && n.r >= 14) return null;
+    return n.status === 'critical' && n.r >= 15 ? null : 'none';
   });
 }
 
-/* ─────────────────────────────────────────────────────────────
-   4. 툴팁 · 초점
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   6. 툴팁 · 초점
+   ═════════════════════════════════════════════════════════════ */
+
+function riskBar(v, color) {
+  return `<div class="mini-bar"><div style="width:${Math.min(100, v).toFixed(0)}%;background:${color}"></div></div>`;
+}
 
 function showTooltip(ev, n) {
   const st = statusMeta();
   const out = [`<div class="tt-title">${esc(n.label)}</div>`];
-
   const meta = n.level === 'diagnosis' ? `${n.sectorLabel} · 진단 ${n.no}`
-    : n.level === 'pledge' ? `${n.sectorLabel} · 공약${n.round ? ` · ${n.round}차 발표` : ''}`
-    : n.level === 'sector' ? `${n.diagnoses.length}개 진단 · ${n.pledges.length}개 공약`
-    : n.level === 'domain' ? `${n.children.length}개 섹터 · 진단 ${n.diagCount} · 공약 ${n.pledgeCount}`
+    : n.level === 'pledge' ? `${n.sectorLabel} · 공약${n.round ? ` · ${n.round}차` : ''}`
+    : n.level === 'sector' ? `진단 ${n.diagnoses.length} · 공약 ${n.pledges.length}`
+    : n.level === 'domain' ? `${n.children.length}개 섹터 · 진단 ${n.diagCount}`
     : `12개 섹터 · 진단 ${n.diagCount} · 공약 ${n.pledgeCount}`;
   out.push(`<div class="tt-meta">${esc(meta)}</div>`);
-
   if (n.detail) out.push(`<div class="tt-detail">${esc(n.detail)}</div>`);
 
   if (n.status) {
     out.push(`<div class="tt-row"><span>상태</span><b style="color:${st[n.status].color}">${st[n.status].icon} ${st[n.status].label}</b></div>`);
   }
+  if (Number.isFinite(n.risk)) {
+    out.push(`<div class="tt-row"><span>잔여위험</span><b>${n.risk.toFixed(0)}<span style="color:var(--ink-3)">/100</span></b></div>`);
+  }
   if (n.level === 'diagnosis') {
-    out.push(`<div class="tt-row"><span>연결된 공약</span><b>${n.coverage}건</b></div>`);
+    out.push(`<div class="tt-row"><span>구조적 심각도</span><b>${n.severity}</b></div>`);
+    out.push(`<div class="tt-row"><span>대응 공약</span><b style="color:${n.coverage ? 'inherit' : st.critical.color}">${n.coverage}건</b></div>`);
     if (n.signals.length) out.push(`<div class="tt-row"><span>시민 신호</span><b>${n.signals.length}건</b></div>`);
+    if (n.evidence) out.push(`<div class="tt-evi">◆ ${esc(n.evidence.fact)}</div>`);
   }
   if (n.level === 'pledge') {
     out.push(`<div class="tt-row"><span>해소 대상 진단</span><b>${n.resolveCount}건</b></div>`);
     if (n.crossDeg) out.push(`<div class="tt-row"><span>공약 간 연결</span><b>${n.crossDeg}건</b></div>`);
   }
-  if (n.level === 'sector' || n.level === 'domain' || n.level === 'city') {
-    out.push(`<div class="tt-row"><span>미대응 진단</span><b style="color:${n.uncovered ? st.critical.color : st.good.color}">${n.uncovered}건</b></div>`);
+  if (['sector', 'domain', 'city'].includes(n.level)) {
+    out.push(`<div class="tt-row"><span>위험 진단</span><b style="color:${st.critical.color}">${n.atRisk}건</b></div>`);
+    out.push(`<div class="tt-row"><span>미대응 진단</span><b>${n.uncovered}건</b></div>`);
   }
+  out.push(`<div class="tt-hint">클릭 → 연결된 노드 점등</div>`);
 
   tooltipEl.innerHTML = out.join('');
   tooltipEl.hidden = false;
@@ -531,12 +689,12 @@ function moveTooltip(ev) {
   tooltipEl.style.left = Math.max(8, Math.min(x + 16, wrap.width - w - 8)) + 'px';
   tooltipEl.style.top = Math.max(8, Math.min(y + 16, wrap.height - h - 8)) + 'px';
 }
-
 const hideTooltip = () => { tooltipEl.hidden = true; };
 
 function setFocus(id) {
   state.focus = id;
   applyVisibility();
+  applyLabelVisibility();
   renderDetail(state.byId.get(id));
   $$('.sector-row').forEach((el) => el.classList.toggle('is-on', el.dataset.id === id));
 }
@@ -544,32 +702,33 @@ function setFocus(id) {
 function clearFocus() {
   state.focus = null;
   applyVisibility();
+  applyLabelVisibility();
   $('#detail-empty').hidden = false;
   $('#detail-body').hidden = true;
   $$('.sector-row').forEach((el) => el.classList.remove('is-on'));
 }
 
-/* ─────────────────────────────────────────────────────────────
-   5. 패널
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   7. 패널
+   ═════════════════════════════════════════════════════════════ */
 
 function renderStats() {
   const st = statusMeta();
   const diag = state.nodes.filter((n) => n.level === 'diagnosis');
   const pled = state.nodes.filter((n) => n.level === 'pledge');
   const uncovered = diag.filter((d) => d.coverage === 0).length;
-  const pressure = diag.filter((d) => d.status === 'serious').length;
-  const cover = ((1 - uncovered / diag.length) * 100).toFixed(0);
-  const cross = state.links.filter((l) => !['converge', 'resolves'].includes(l.type)).length;
+  const crit = diag.filter((d) => d.status === 'critical').length;
+  const ser = diag.filter((d) => d.status === 'serious').length;
+  const avgRisk = diag.reduce((a, d) => a + d.risk, 0) / diag.length;
+  const avgSev = diag.reduce((a, d) => a + (d.severity || 0), 0) / diag.length;
 
   const items = [
-    ['진단 항목', fmt(diag.length), '개'],
-    ['공약 과제', fmt(pled.length), '개'],
-    ['대응 커버리지', cover, '%'],
+    ['진단 / 공약', `${diag.length}<span style="color:var(--ink-3);font-size:14px"> / ${pled.length}</span>`, ''],
+    ['평균 구조 심각도', avgSev.toFixed(0), '/100'],
+    ['평균 잔여위험', `<span style="color:${st.serious.color}">${avgRisk.toFixed(0)}</span>`, '/100'],
+    ['위험 / 경계', `<span style="color:${st.critical.color}">${crit}</span> / <span style="color:${st.serious.color}">${ser}</span>`, '개'],
     ['미대응 진단', `<span style="color:${uncovered ? st.critical.color : st.good.color}">${uncovered}</span>`, '개'],
-    ['현장 압력 지점', `<span style="color:${st.serious.color}">${pressure}</span>`, '개'],
     ['시민 신호', fmt(state.raw.signals.length), '건'],
-
   ];
   $('#stat-row').innerHTML = items.map(([k, v, u]) =>
     `<div class="stat"><div class="stat-k">${k}</div><div class="stat-v">${v}<small>${u}</small></div></div>`).join('');
@@ -578,24 +737,20 @@ function renderStats() {
 function renderSectorList() {
   const st = statusMeta();
   const sectors = state.nodes.filter((n) => n.level === 'sector')
-    .slice().sort((a, b) => a.no - b.no);
-  $('#sector-list').innerHTML = sectors.map((s) => {
-    const un = s.uncovered;
-    const flag = un
-      ? `<span style="color:${st.critical.color}">■ ${un}</span>`
-      : `<span style="color:${st.good.color}">● 0</span>`;
-    return `<button class="sector-row" data-id="${s.id}">
+    .slice().sort((a, b) => b.risk - a.risk);
+  $('#sector-list').innerHTML = sectors.map((s) => `
+    <button class="sector-row" data-id="${s.id}">
       <span class="sector-bar" style="background:${s.color}"></span>
       <span>
         <span class="sector-name">${s.no}. ${esc(s.label)}</span>
-        <span class="sector-sub">진단 ${s.diagnoses.length} · 공약 ${s.pledges.length}</span>
+        <span class="sector-sub">위험 ${s.atRisk} · 미대응 ${s.uncovered} · 진단 ${s.diagnoses.length}</span>
+        ${riskBar(s.risk, st[s.status].color)}
       </span>
       <span class="sector-metric">
-        <span class="sector-count">${(s.coverage * 100).toFixed(0)}%</span>
-        <span class="sector-flag">${flag}</span>
+        <span class="sector-count" style="color:${st[s.status].color}">${s.risk.toFixed(0)}</span>
+        <span class="sector-flag">잔여위험</span>
       </span>
-    </button>`;
-  }).join('');
+    </button>`).join('');
 
   $$('.sector-row').forEach((el) =>
     el.addEventListener('click', () => {
@@ -653,10 +808,10 @@ function renderLegend() {
   const tx = state.raw.taxonomy;
   $('#legend-body').innerHTML = `
     <div class="legend-group">
-      <h4>노드 종류 (모양)</h4>
+      <h4>노드 (모양)</h4>
       <div class="legend-cols">
-        <div class="legend-item"><span class="legend-swatch legend-circle"></span>진단(문제)</div>
-        <div class="legend-item"><span class="legend-swatch legend-square"></span>공약(해법)</div>
+        <div class="legend-item"><span class="legend-swatch legend-circle"></span>진단 · 피질</div>
+        <div class="legend-item"><span class="legend-swatch legend-square"></span>공약 · 백질</div>
       </div>
     </div>
     <div class="legend-cols">
@@ -666,7 +821,7 @@ function renderLegend() {
           `<div class="legend-item"><span class="legend-swatch" style="background:${d.color}"></span>${esc(d.label)}</div>`).join('')}
       </div>
       <div class="legend-group">
-        <h4>진단 상태</h4>
+        <h4>잔여위험</h4>
         ${tx.status.map((s) =>
           `<div class="legend-item"><span class="legend-swatch" style="background:${s.color}"></span>${s.icon} ${esc(s.label)}</div>`).join('')}
       </div>
@@ -680,8 +835,18 @@ function renderLegend() {
         <div class="legend-item"><span class="legend-stroke" style="border-top:2px dotted #c76a52"></span>상충</div>
       </div>
     </div>
-    <p class="legend-note">크기 = 비중 + 연결 수 + 시민 신호량. 공약이 닿지 않은 진단은 붉게 남는다.</p>`;
+    <p class="legend-note">잔여위험 = 구조 심각도 × (1 − 대응감쇄) + 현장 신호. 노드를 누르면 연결이 홉 순서로 점등된다.</p>`;
 }
+
+const AXIS_LABEL = {
+  structural: '구조성', felt: '체감도', trajectory: '악화성', autonomyGap: '권한 결여',
+};
+const AXIS_DESC = {
+  structural: '단년도 정책으로 해소되지 않는 구조적 결손인가',
+  felt: '시민 생활에 직접·즉시 닿는가',
+  trajectory: '방치하면 스스로 악화되고 번지는가',
+  autonomyGap: '해법이 시 권한 밖(중앙·국회)에 있는가',
+};
 
 function renderDetail(n) {
   if (!n) return;
@@ -693,25 +858,49 @@ function renderDetail(n) {
   const kindTag = n.level === 'diagnosis' ? '진단' : n.level === 'pledge' ? '공약' : null;
   const sub = n.level === 'diagnosis' ? `${n.sectorLabel} · ${n.no}번 진단`
     : n.level === 'pledge' ? `${n.sectorLabel}${n.round ? ` · ${n.round}차 브리핑` : ''}`
-    : n.level === 'sector' ? `진단 ${n.diagnoses.length} · 공약 ${n.pledges.length} · 미대응 ${n.uncovered}`
-    : n.level === 'domain' ? `${n.children.length}개 섹터 · 진단 ${n.diagCount} · 공약 ${n.pledgeCount}`
+    : n.level === 'sector' ? `진단 ${n.diagnoses.length} · 공약 ${n.pledges.length} · 위험 ${n.atRisk}`
+    : n.level === 'domain' ? `${n.children.length}개 섹터 · 진단 ${n.diagCount} · 위험 ${n.atRisk}`
     : `12개 섹터가 수렴하는 최상위 지점`;
 
-  const parts = [];
-  parts.push(`<div class="d-head">
+  const parts = [`<div class="d-head">
       <span class="d-dot ${n.level === 'pledge' ? 'is-square' : ''}" style="background:${nodeFill(n)}"></span>
       <span class="d-title">${esc(n.label)}${kindTag ? `<span class="d-kind">${kindTag}</span>` : ''}</span>
     </div>
-    <div class="d-sub">${esc(sub)}</div>`);
+    <div class="d-sub">${esc(sub)}</div>`];
 
   if (n.detail) parts.push(`<p class="d-detail">${esc(n.detail)}</p>`);
 
   if (n.status) {
     parts.push(`<div class="d-status" style="background:${st[n.status].color}22;color:${st[n.status].color};border:1px solid ${st[n.status].color}55">
-      ${st[n.status].icon} ${st[n.status].label}</div>`);
+      ${st[n.status].icon} ${st[n.status].label}${Number.isFinite(n.risk) ? ` · 잔여위험 ${n.risk.toFixed(0)}` : ''}</div>`);
   }
 
-  // ── 진단: 대응 현황
+  // ── 정밀 진단 (4축)
+  if (n.level === 'diagnosis' && n.assess) {
+    parts.push(`<div class="d-section"><h3>정밀 진단</h3>
+      <div class="assess">
+        ${Object.entries(n.assess).map(([k, v]) => `
+          <div class="assess-row" title="${esc(AXIS_DESC[k])}">
+            <span class="assess-k">${AXIS_LABEL[k]}</span>
+            <span class="assess-dots">${[1, 2, 3, 4, 5].map((i) =>
+              `<i class="${i <= v ? 'on' : ''}"></i>`).join('')}</span>
+            <span class="assess-v">${v}</span>
+          </div>`).join('')}
+      </div>
+      <dl class="kv" style="margin-top:10px">
+        <dt>구조적 심각도</dt><dd>${n.severity} / 100</dd>
+        <dt>대응 감쇄</dt><dd>−${Math.round(DAMP[Math.min(3, n.coverage)] * 100)}% (공약 ${n.coverage}건)</dd>
+        <dt>현장 신호 가산</dt><dd>+${Math.min(12, n.signalLoad * 0.6).toFixed(0)}</dd>
+        <dt><b>잔여위험</b></dt><dd><b style="color:${st[n.status].color}">${n.risk.toFixed(0)} / 100</b></dd>
+      </dl>
+    </div>`);
+
+    if (n.evidence) {
+      parts.push(`<div class="d-section"><h3>공개 지표 근거</h3>
+        <div class="evidence"><p>${esc(n.evidence.fact)}</p><cite>${esc(n.evidence.src)}</cite></div></div>`);
+    }
+  }
+
   if (n.level === 'diagnosis') {
     const covered = n.coveredBy.map((id) => state.byId.get(id)).filter(Boolean);
     parts.push(`<div class="d-section"><h3>대응 공약 ${covered.length}</h3>${
@@ -725,16 +914,16 @@ function renderDetail(n) {
     }</div>`);
   }
 
-  // ── 공약: 해소 대상 진단
   if (n.level === 'pledge') {
     const targets = (n.resolves || []).map((id) => state.byId.get(id)).filter(Boolean);
-    parts.push(`<div class="d-section"><h3>해소 대상 진단 ${targets.length}</h3>${
-      targets.map((d) => `<button class="lnk-item" data-goto="${d.id}">
+    const relieved = targets.reduce((a, d) => a + (d.severity || 0) * DAMP[Math.min(3, d.coverage)], 0);
+    parts.push(`<div class="d-section"><h3>해소 대상 진단 ${targets.length}</h3>
+      ${targets.length ? `<p class="lead-note">이 공약이 걷어내는 위험 총량 <b>${relieved.toFixed(0)}</b>점</p>` : ''}
+      ${targets.map((d) => `<button class="lnk-item" data-goto="${d.id}">
         <span class="lnk-top"><span class="sev-dot" style="background:${nodeFill(d)}"></span>
           <span>${esc(d.label)}</span></span>
-        <span class="lnk-note">${esc(d.sectorLabel)} · ${st[d.status].icon} ${st[d.status].label}${d.detail ? ' · ' + esc(d.detail) : ''}</span>
-      </button>`).join('')
-    }</div>`);
+        <span class="lnk-note">${esc(d.sectorLabel)} · ${st[d.status].icon} ${st[d.status].label} · 심각도 ${d.severity}</span>
+      </button>`).join('')}</div>`);
 
     if (n.kpi?.length) {
       parts.push(`<div class="d-section"><h3>목표 지표</h3>${n.kpi.map((k) => {
@@ -749,7 +938,6 @@ function renderDetail(n) {
     }
   }
 
-  // ── 횡단 관계 (공약 ↔ 공약)
   const rel = state.links.filter((l) => ['synergy', 'dependency', 'conflict'].includes(l.type) &&
     (l.source.id === n.id || l.target.id === n.id));
   if (rel.length) {
@@ -767,7 +955,6 @@ function renderDetail(n) {
       }).join('')}</div>`);
   }
 
-  // ── 시민 신호
   if (n.signals?.length) {
     const sc = { low: 'var(--ink-3)', mid: st.warning.color, high: st.serious.color, critical: st.critical.color };
     const sl = { low: '낮음', mid: '보통', high: '높음', critical: '위기' };
@@ -784,15 +971,14 @@ function renderDetail(n) {
       <p class="empty-note">접수된 신호가 없습니다.</p></div>`);
   }
 
-  // ── 섹터 상세
   if (n.level === 'sector') {
-    const un = n.diagnoses.filter((d) => d.coverage === 0);
-    if (un.length) {
-      parts.push(`<div class="d-section"><h3 class="h3-alert">공약 공백 ${un.length}</h3>${un
+    const risky = n.diagnoses.slice().sort((a, b) => b.risk - a.risk).filter((d) => d.status === 'critical');
+    if (risky.length) {
+      parts.push(`<div class="d-section"><h3 class="h3-alert">위험 진단 ${risky.length}</h3>${risky
         .map((d) => `<button class="lnk-item is-gap" data-goto="${d.id}">
           <span class="lnk-top"><span class="sev-dot" style="background:${nodeFill(d)}"></span>
             <span>${d.no}. ${esc(d.label)}</span></span>
-          ${d.detail ? `<span class="lnk-note">${esc(d.detail)}</span>` : ''}
+          <span class="lnk-note">잔여위험 ${d.risk.toFixed(0)} · 심각도 ${d.severity} · 공약 ${d.coverage}건</span>
         </button>`).join('')}</div>`);
     }
     parts.push(`<div class="d-section"><h3>공약 ${n.pledges.length}</h3>${n.pledges
@@ -802,19 +988,21 @@ function renderDetail(n) {
         <span class="lnk-note">${p.round ? p.round + '차 브리핑 · ' : ''}진단 ${p.resolveCount}건 해소</span>
       </button>`).join('')}</div>`);
     parts.push(`<div class="d-section"><h3>진단 전체 ${n.diagnoses.length}</h3>${n.diagnoses
+      .slice().sort((a, b) => b.risk - a.risk)
       .map((d) => `<button class="lnk-item" data-goto="${d.id}">
         <span class="lnk-top"><span class="sev-dot" style="background:${nodeFill(d)}"></span>
           <span>${d.no}. ${esc(d.label)}</span></span>
-        <span class="lnk-note">${st[d.status].icon} ${st[d.status].label} · 대응 공약 ${d.coverage}건</span>
+        <span class="lnk-note">${st[d.status].icon} 잔여위험 ${d.risk.toFixed(0)} · 공약 ${d.coverage}건</span>
       </button>`).join('')}</div>`);
   }
 
   if (n.level === 'domain' || n.level === 'city') {
     parts.push(`<div class="d-section"><h3>하위 ${n.level === 'city' ? '영역' : '섹터'} ${n.children.length}</h3>${n.children
+      .slice().sort((a, b) => b.risk - a.risk)
       .map((c) => `<button class="lnk-item" data-goto="${c.id}">
         <span class="lnk-top"><span class="sev-dot" style="background:${nodeFill(c)}"></span>
           <span>${esc(c.label)}</span></span>
-        <span class="lnk-note">${st[c.status].icon} ${st[c.status].label} · 미대응 ${c.uncovered}건</span>
+        <span class="lnk-note">${st[c.status].icon} 잔여위험 ${c.risk.toFixed(0)} · 위험 ${c.atRisk} · 미대응 ${c.uncovered}</span>
       </button>`).join('')}</div>`);
   }
 
@@ -823,18 +1011,16 @@ function renderDetail(n) {
     el.addEventListener('click', () => setFocus(el.dataset.goto)));
 }
 
-/* ─────────────────────────────────────────────────────────────
-   6. 화면 맞춤 · 컨트롤
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   8. 컨트롤
+   ═════════════════════════════════════════════════════════════ */
 
 function fitToScreen(ms = 600) {
   const rect = svg.node().getBoundingClientRect();
-  const xs = state.nodes.map((n) => n.x).filter(Number.isFinite);
-  const ys = state.nodes.map((n) => n.y).filter(Number.isFinite);
-  if (xs.length < 2 || rect.width < 10 || rect.height < 10) return;
-  const pad = 80;
-  const [x0, x1] = [Math.min(...xs) - pad, Math.max(...xs) + pad];
-  const [y0, y1] = [Math.min(...ys) - pad, Math.max(...ys) + pad];
+  if (rect.width < 10 || rect.height < 10) return;
+  const pad = 90;
+  const [x0, x1] = [-BRAIN.A - pad, BRAIN.A + pad];
+  const [y0, y1] = [-BRAIN.B - pad, BRAIN.B * 1.36 + pad];
   const k = Math.min(rect.width / (x1 - x0), rect.height / (y1 - y0), 1.6);
   if (!Number.isFinite(k) || k <= 0) return;
   const t = d3.zoomIdentity
@@ -891,9 +1077,9 @@ function bindControls() {
   window.addEventListener('resize', () => fitToScreen(0));
 }
 
-/* ─────────────────────────────────────────────────────────────
-   7. 시민 신호 입력
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   9. 시민 신호 입력
+   ═════════════════════════════════════════════════════════════ */
 
 function bindSignalDialog() {
   const dlg = $('#dlg-signal');
@@ -971,12 +1157,12 @@ function bindSignalDialog() {
   });
 }
 
-/* ─────────────────────────────────────────────────────────────
-   8. 부팅
-   ───────────────────────────────────────────────────────────── */
+/* ═════════════════════════════════════════════════════════════
+   10. 부팅
+   ═════════════════════════════════════════════════════════════ */
 
 async function reload() {
-  const prev = new Map(state.nodes.map((n) => [n.id, { x: n.x, y: n.y, vx: n.vx, vy: n.vy }]));
+  const prev = new Map(state.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
   state.raw = await (await fetch('/api/graph')).json();
   Object.assign(state, buildModel(state.raw));
   for (const n of state.nodes) {
@@ -987,7 +1173,7 @@ async function reload() {
   render();
   renderStats();
   renderSectorList();
-  state.sim.alpha(0.3).restart();
+  state.sim.alpha(0.25).restart();
 }
 
 async function boot() {
@@ -1004,8 +1190,7 @@ async function boot() {
   bindControls();
   bindSignalDialog();
 
-  state.sim.on('end', () => fitToScreen(500));
-  setTimeout(() => fitToScreen(700), 1600);
+  setTimeout(() => fitToScreen(700), 700);
 }
 
 boot().catch((err) => {

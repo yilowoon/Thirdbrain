@@ -557,3 +557,147 @@ body {
 .gap-note b { color: #ff9b9b; }
 
 .target-none { padding: 9px 10px; color: var(--ink-3); font-size: 12px; }
+
+/* ══ 뇌 형상 배경 ═══════════════════════════════════ */
+.brain-lobe {
+  fill: rgba(255,255,255,0.022);
+  stroke: rgba(255,255,255,0.16);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.brain-sulcus {
+  fill: none;
+  stroke: rgba(255,255,255,0.075);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+.brain-cerebellum {
+  fill: rgba(255,255,255,0.016);
+  stroke: rgba(255,255,255,0.11);
+  stroke-width: 1.3;
+}
+.brain-stem {
+  fill: rgba(255,255,255,0.020);
+  stroke: rgba(255,255,255,0.12);
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+}
+.brain-midline {
+  stroke: rgba(255,255,255,0.13);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 5;
+}
+.brain-hemi-label {
+  fill: var(--ink-3);
+  font-size: 13px;
+  letter-spacing: .05em;
+  opacity: .55;
+}
+
+/* ══ 점등(신경 발화) ════════════════════════════════ */
+.halo {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.node.act .node-shape {
+  stroke: #ffffff;
+  stroke-width: 2.4;
+  filter: brightness(1.28) saturate(1.15);
+  transition: stroke-width .2s ease, filter .2s ease;
+}
+.node.act .node-label { fill: var(--ink); opacity: 1; }
+
+.node.act-self .node-shape { stroke-width: 3.2; filter: brightness(1.45) saturate(1.2); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .node.act .halo {
+    animation: ignite .62s cubic-bezier(.16,.8,.3,1) both;
+    animation-delay: var(--hop-delay, 0s);
+  }
+  .link.act {
+    stroke-dasharray: var(--len) var(--len);
+    stroke-dashoffset: var(--len);
+    animation: surge .5s ease-out both;
+    animation-delay: var(--hop-delay, 0s);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node.act .halo { opacity: var(--halo-hold, .4); transform: scale(1.2); }
+  .link.act { stroke-opacity: 1; }
+}
+
+/* 키프레임 안에서는 calc(var(...)) 가 무시되는 경우가 있어
+   최고점·유지값을 JS에서 계산해 그대로 넘긴다 */
+@keyframes ignite {
+  0%   { opacity: 0;                     transform: scale(.55); stroke-width: 3; }
+  40%  { opacity: var(--halo-peak, .9);  transform: scale(1.5);  stroke-width: 2; }
+  100% { opacity: var(--halo-hold, .4);  transform: scale(1.12); stroke-width: 1.4; }
+}
+@keyframes surge {
+  0%   { stroke-dashoffset: var(--len); stroke-opacity: .15; }
+  60%  { stroke-opacity: 1; }
+  100% { stroke-dashoffset: 0; stroke-opacity: 1; }
+}
+
+.link.act { stroke-width: 2.2; }
+.link.act.link-converge { stroke: rgba(255,255,255,.6); }
+
+/* ══ 정밀 진단 패널 ═════════════════════════════════ */
+.assess { display: flex; flex-direction: column; gap: 6px; }
+.assess-row {
+  display: grid;
+  grid-template-columns: 62px 1fr 16px;
+  align-items: center; gap: 9px;
+  font-size: 12px;
+}
+.assess-k { color: var(--ink-3); }
+.assess-dots { display: flex; gap: 3px; }
+.assess-dots i {
+  width: 100%; height: 6px; border-radius: 2px;
+  background: var(--surface-3);
+  display: block;
+}
+.assess-dots i.on { background: var(--st-serious); }
+.assess-v { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+.evidence {
+  background: rgba(57,135,229,.09);
+  border: 1px solid rgba(57,135,229,.32);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.evidence p { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink); }
+.evidence cite {
+  display: block; margin-top: 6px;
+  font-size: 10.5px; font-style: normal; color: var(--ink-3);
+}
+
+.lead-note {
+  margin: 0 0 8px; padding: 7px 9px;
+  background: var(--surface-2); border-radius: 7px;
+  font-size: 11.5px; color: var(--ink-2);
+}
+.lead-note b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.mini-bar {
+  height: 3px; border-radius: 2px; background: var(--surface-3);
+  margin-top: 5px; overflow: hidden;
+}
+.mini-bar > div { height: 100%; border-radius: 2px; }
+
+.tt-evi {
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid var(--hairline-2);
+  font-size: 10.5px; color: #9ec5f4; line-height: 1.45;
+}
+.tt-hint {
+  margin-top: 7px; padding-top: 6px;
+  border-top: 1px solid var(--hairline-2);
+  font-size: 10px; color: var(--ink-3);
+}

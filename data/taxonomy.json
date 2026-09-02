@@ -30,10 +30,10 @@
     { "id": "S12", "no": 12, "domain": "D4", "label": "안전·재난관리", "color": "#943ca7", "angle": 345 }
   ],
   "status": [
-    { "id": "good",     "label": "대응 확보", "color": "#0ca30c", "icon": "●", "desc": "겨냥한 공약 2건 이상" },
-    { "id": "warning",  "label": "대응 착수", "color": "#fab219", "icon": "▲", "desc": "겨냥한 공약 1건" },
-    { "id": "serious",  "label": "현장 압력", "color": "#ec835a", "icon": "◆", "desc": "공약은 있으나 위기·고심각 시민 신호가 쌓인 지점" },
-    { "id": "critical", "label": "미대응",   "color": "#d03b3b", "icon": "■", "desc": "겨냥한 공약이 하나도 없는 진단 — 공약 공백" }
+    { "id": "good",     "label": "관리 가능", "color": "#0ca30c", "icon": "●", "desc": "잔여위험 44 미만" },
+    { "id": "warning",  "label": "주의",     "color": "#fab219", "icon": "▲", "desc": "잔여위험 44~57" },
+    { "id": "serious",  "label": "경계",     "color": "#ec835a", "icon": "◆", "desc": "잔여위험 58~71" },
+    { "id": "critical", "label": "위험",     "color": "#d03b3b", "icon": "■", "desc": "잔여위험 72 이상 — 구조적 심각도가 높은데 대응이 없거나 얇은 지점" }
   ],
   "nodeKinds": [
     { "id": "diagnosis", "label": "진단", "desc": "해결해야 할 문제. 공약이 붙지 않으면 붉게 남는다." },
