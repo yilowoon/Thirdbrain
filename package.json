@@ -1,0 +1,15 @@
+{
+  "name": "thirdbrain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ThirdBrain — 세종시 정책 네트워크 플랫폼 (Policy Network Intelligence)",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
