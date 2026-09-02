@@ -265,7 +265,7 @@ body {
 .node-shape { transition: opacity .18s, stroke-width .18s; }
 .mark-core { transition: r .22s ease, fill-opacity .18s; pointer-events: none; }
 .node-diagnosis .mark-core { mix-blend-mode: screen; }
-.mark-outer { pointer-events: none; }
+.ring-outer, .ring-inner { pointer-events: none; }
 
 .node-label {
   font-size: 10px;
@@ -540,8 +540,6 @@ body {
 .chip-pledge { border-radius: 2px; transform: rotate(45deg) scale(.85); }
 .chip-org { border-radius: 2px; background: none; border: 1.4px solid var(--ink-2); }
 
-.legend-circle { background: var(--ink-2); border-radius: 50%; }
-.legend-square { background: var(--ink-2); border-radius: 2px; }
 
 .tt-detail {
   font-size: 11px; color: var(--ink-2); line-height: 1.45;
@@ -603,22 +601,19 @@ body {
   pointer-events: none;
 }
 
-/* 연결되면 골드에서 블루로 물든다. 위험 노드는 맥동 링이 크림슨으로 남아
+/* 연결되면 골드에서 블루로 물든다. 위험 노드는 맥동 링이 실버로 남아
    블루로 켜져도 어느 것이 위험인지 구분된다. */
 .node.act .mark-ring   { stroke: var(--connect); stroke-width: 2.2; }
+.node.act .ring-inner  { stroke: var(--connect); stroke-opacity: .95; }
+.node.act .ring-outer  { stroke: var(--connect); stroke-opacity: .8; }
 .node.act .mark-core   { fill: var(--connect); fill-opacity: .95; }
-.node.act .mark-outer  { stroke: var(--connect); stroke-opacity: .8; }
+.node.act .node-label  { fill: var(--connect-hi); }
+
 .link.act { stroke-width: 1.4; }
 
-.node.act .mark-diamond {
-  stroke: var(--connect);
-  fill: var(--connect);
-  fill-opacity: .22;
-}
-.node.act .node-label { fill: var(--connect-hi); }
-
 .node.act-self .mark-ring   { stroke: var(--connect-hi); stroke-width: 3; }
-.node.act-self .mark-outer  { stroke: var(--connect-hi); stroke-opacity: .95; }
+.node.act-self .ring-outer  { stroke: var(--connect-hi); stroke-opacity: .95; }
+.node.act-self .ring-inner  { stroke: var(--connect-hi); }
 .node.act-self .node-label  { fill: #ffffff; font-weight: 600; }
 .node.act .node-label { fill: var(--ink); opacity: 1; }
 
@@ -705,15 +700,9 @@ body {
   font-size: 10px; color: var(--ink-3);
 }
 
-.legend-diamond {
-  background: var(--ink-2);
-  border-radius: 2px;
-  transform: rotate(45deg) scale(.85);
-}
 .legend-note b { color: var(--ink-2); font-weight: 500; }
 
 /* ── 행정조직 노드 ─────────────────────────────────── */
-.node-org .mark-ring { stroke-dasharray: 3 2.5; }
 .org-label { font-size: 9px; fill: var(--ink-3); }
 
 /* ── 신규 정책 입력 ─────────────────────────────────── */
@@ -783,3 +772,21 @@ body {
   color: var(--ink-3); font-size: 11px; letter-spacing: .02em;
 }
 body.is-readonly #btn-add { opacity: .45; }
+
+/* 범례의 링 구조 아이콘 */
+.lg-mark {
+  width: 13px; height: 13px; flex: none; border-radius: 50%;
+  border: 1.4px solid var(--ink-2); position: relative;
+}
+.lg-mark::before {
+  content: ""; position: absolute; border-radius: 50%;
+}
+.lg-diag::before { inset: 3px; background: var(--ink-2); }
+.lg-pledge::before { inset: 2.6px; border: 1.2px solid var(--ink-2); }
+.lg-hub { border-width: 1.2px; }
+.lg-hub::before { inset: 2.4px; border: 1.1px solid var(--ink-2); }
+.lg-hub::after {
+  content: ""; position: absolute; inset: -3.2px;
+  border: 1px solid var(--ink-3); border-radius: 50%;
+}
+.lg-org { width: 10px; height: 10px; border-width: 1.2px; }

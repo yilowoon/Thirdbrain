@@ -220,8 +220,9 @@ function applyPriority(nodes, links, byId) {
     }
   }
   for (const n of nodes) {
-    if (n.level === 'domain') n.r = 19;
-    else if (n.level === 'city') n.r = 26;
+    // 시(市)는 모든 축이 모이는 최종 수렴점이라 확실히 크게 둔다
+    if (n.level === 'city') n.r = 40;
+    else if (n.level === 'domain') n.r = 23;
     else if (n.level === 'org') n.r = 7.5;
     else if (n.level === 'team') n.r = 4.6;
   }
@@ -702,65 +703,66 @@ function render() {
   enter.append('circle').attr('class', 'hit');
   enter.append('circle').attr('class', 'halo');
   enter.append('circle').attr('class', 'pulse');
-  enter.append('circle').attr('class', 'mark-outer');     // 위험 노드의 이중 링
-  enter.append('circle').attr('class', 'mark-ring node-shape');
-  enter.append('circle').attr('class', 'mark-core');      // 채움 밀도 = 상태
-  enter.append('rect').attr('class', 'mark-diamond node-shape');
+  enter.append('circle').attr('class', 'ring-outer');            // 바깥 링 (위험 경보 · 영역/시)
+  enter.append('circle').attr('class', 'mark-ring node-shape');  // 본 링
+  enter.append('circle').attr('class', 'ring-inner node-shape'); // 안쪽 링 (공약 · 영역/시)
+  enter.append('circle').attr('class', 'mark-core');             // 채움 = 상태
   enter.append('text').attr('class', 'node-label');
 
   const all = enter.merge(nodeSel);
-  const isPledge = (n) => n.level === 'pledge';
   // 상태는 색보다 '채움 밀도'가 먼저 말한다 — 색을 못 봐도 읽힌다
   const FILL = { good: 0.20, warning: 0.36, serious: 0.54, critical: 0.72 };
 
-  all.select('circle.hit').attr('r', (n) => n.r + 4);  // 충돌반경(r+5)보다 작게 — 이웃의 hover 를 뺏지 않는다
+  /* 모양은 모두 원이다. 대신 링 개수로 계층을 말한다.
+       팀     점선 링 하나
+       과     링 하나 + 작은 점
+       진단   링 하나 + 채움(채움 밀도 = 상태)
+       공약   이중 링
+       영역·시 삼중 동심원  */
+  const isPledge = (n) => n.level === 'pledge';
+  const isHub = (n) => n.level === 'domain' || n.level === 'city';
+
+  all.select('circle.hit').attr('r', (n) => n.r + 4);
   all.select('circle.halo').attr('r', (n) => n.r + 4);
   all.select('circle.pulse')
     .attr('r', (n) => n.r + 3)
     .style('display', (n) => (n.status === 'critical' && n.level === 'diagnosis' ? null : 'none'));
 
-  all.select('circle.mark-outer')
-    .attr('r', (n) => n.r + 4.5)
+  all.select('circle.ring-outer')
+    .style('display', (n) => (n.status === 'critical' || isHub(n) ? null : 'none'))
+    .attr('r', (n) => (isHub(n) ? n.r * 1.34 : n.r + 4.5))
     .attr('fill', 'none')
-    .attr('stroke', (n) => nodeFill(n))
-    .attr('stroke-width', 0.9)
-    .attr('stroke-opacity', 0.55)
-    .style('display', (n) =>
-      (n.status === 'critical' || n.level === 'domain' || n.level === 'city') ? null : 'none');
+    .attr('stroke', nodeFill)
+    .attr('stroke-width', (n) => (isHub(n) ? 1.3 : 0.9))
+    .attr('stroke-opacity', (n) => (isHub(n) ? 0.62 : 0.55));
 
   all.select('circle.mark-ring')
-    .style('display', (n) => (isPledge(n) ? 'none' : null))
-    .attr('stroke-dasharray', (n) => (n.level === 'team' ? '2 2' : null))
     .attr('r', (n) => n.r)
     .attr('fill', 'none')
     .attr('stroke', nodeFill)
+    .attr('stroke-dasharray', (n) => (n.level === 'team' ? '2 2' : null))
     .attr('stroke-width', (n) =>
-      n.level === 'city' ? 2 : n.level === 'domain' ? 1.9 : n.level === 'sector' ? 1.7
+      n.level === 'city' ? 2.4 : n.level === 'domain' ? 2 : n.level === 'sector' ? 1.7
         : n.level === 'team' ? 1 : 1.5);
 
+  all.select('circle.ring-inner')
+    .style('display', (n) => (isPledge(n) || isHub(n) ? null : 'none'))
+    .attr('r', (n) => (isHub(n) ? n.r * 0.60 : n.r * 0.55))
+    .attr('fill', 'none')
+    .attr('stroke', nodeFill)
+    .attr('stroke-width', (n) => (isHub(n) ? 1.5 : 1.3))
+    .attr('stroke-opacity', (n) => (isHub(n) ? 0.85 : 0.9));
+
   all.select('circle.mark-core')
-    .style('display', (n) => (isPledge(n) ? 'none' : null))
+    .style('display', (n) => (isPledge(n) || n.level === 'domain' || n.level === 'team' ? 'none' : null))
     .attr('r', (n) => {
-      if (n.level === 'city') return n.r * 0.30;
-      if (n.level === 'domain') return n.r * 0.34;
+      if (n.level === 'city') return n.r * 0.26;
+      if (n.level === 'org') return n.r * 0.30;
       if (n.level === 'sector') return n.r * (0.26 + 0.34 * (FILL[n.status] ?? 0.3));
-      if (n.level === 'team') return n.r * 0.34;
       return n.r * (FILL[n.status] ?? 0.25);
     })
     .attr('fill', nodeFill)
     .attr('fill-opacity', (n) => (n.status === 'critical' ? 0.88 : 0.74));
-
-  // 공약은 마름모 — 색을 못 봐도 진단과 구분된다
-  all.select('rect.mark-diamond')
-    .style('display', (n) => (isPledge(n) ? null : 'none'))
-    .attr('width', (n) => n.r * 1.42).attr('height', (n) => n.r * 1.42)
-    .attr('x', (n) => -n.r * 0.71).attr('y', (n) => -n.r * 0.71)
-    .attr('rx', 2.5)
-    .attr('transform', 'rotate(45)')
-    .attr('fill', (n) => n.color)
-    .attr('fill-opacity', 0.16)
-    .attr('stroke', (n) => n.color)
-    .attr('stroke-width', 1.5);
 
   // 작은 점에도 라벨을 붙인다. 앞자리는 그 노드가 내건 값이다.
   all.select('text.node-label')
@@ -1153,12 +1155,11 @@ function renderLegend() {
   const ramp = TONE;
   $('#legend-body').innerHTML = `
     <div class="legend-group">
-      <h4>노드 (모양)</h4>
-      <div class="legend-cols">
-        <div class="legend-item"><span class="legend-swatch legend-circle"></span>진단</div>
-        <div class="legend-item"><span class="legend-swatch legend-diamond"></span>공약</div>
-      </div>
-      <div class="legend-item" style="margin-top:3px"><span class="legend-swatch legend-org"></span>행정조직(과)</div>
+      <h4>노드 — 링 개수가 계층이다</h4>
+      <div class="legend-item"><span class="lg-mark lg-diag"></span>진단 · 링 + 채움</div>
+      <div class="legend-item"><span class="lg-mark lg-pledge"></span>공약 · 이중 링</div>
+      <div class="legend-item"><span class="lg-mark lg-hub"></span>영역 · 시 · 삼중 동심원</div>
+      <div class="legend-item"><span class="lg-mark lg-org"></span>과 · 팀</div>
     </div>
     <div class="legend-group">
       <h4>연결 얽힘도</h4>
