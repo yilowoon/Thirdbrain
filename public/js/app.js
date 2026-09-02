@@ -1,13 +1,13 @@
 /* ThirdBrain — 세종시 12대 섹터 진단·공약 네트워크
  *
- * 배치는 뇌(top view) 형태다.
- *   피질(바깥)  = 진단 97 — 문제는 표면에 드러난다
- *   백질(안쪽)  = 공약 54 — 해법은 안에서 연결한다
- *   좌반구 = 물적 기반(산업·기술·공간·환경·농업·안전)
- *   우반구 = 사람과 위상(행정수도·문화·국제화·교육·복지·보건)
- *   중심   = 세종시. 모든 축이 여기로 수렴한다.
+ * 맞물린 두 개의 원환. 겹치는 자리에 생기는 렌즈가 수렴점(세종시)이다.
+ *   바깥 궤도 = 진단 97 (○ 링)   문제는 바깥에 드러난다
+ *   안쪽 궤도 = 공약 54 (◇ 마름모) 해법은 안에서 잇는다
+ *   왼쪽 원환 = 공간·환경·농업 + 경제·산업·기술
+ *   오른쪽 원환 = 시민의 삶 + 도시위상·문화·안전
  *
- * 노드를 선택하면 연결된 노드가 홉 거리 순으로 차례차례 점등된다(신경 발화).
+ * 상태는 색이 아니라 '채움 밀도'가 먼저 말한다 — 링이 차오를수록 위험하다.
+ * 노드를 선택하면 연결된 노드가 홉 거리 순으로 차례차례 점등된다.
  */
 'use strict';
 
@@ -41,35 +41,53 @@ const esc = (s) =>
 const fmt = (n) => new Intl.NumberFormat('ko-KR').format(n);
 
 /* ═════════════════════════════════════════════════════════════
-   1. 뇌 형상 — 노드 배치와 외곽선이 같은 함수를 쓴다
+   1. 기하 — 맞물린 두 개의 원환
+   두 원이 겹치며 중앙에 렌즈(vesica)를 만든다. 그 렌즈가 수렴점이다.
+   노드 좌표와 배경 도형이 같은 상수를 쓰므로 정확히 맞물린다.
    ═════════════════════════════════════════════════════════════ */
 
-const BRAIN = { A: 470, B: 560, GAP: 30 };
+const RING = {
+  R: 430,        // 원환 반지름
+  cx: 258,       // 중심 간 거리의 절반 (R×0.6) — 겹침의 깊이를 정한다
+  outer: 46,     // 진단이 앉는 바깥 궤도
+  inner: -60,    // 공약이 앉는 안쪽 궤도
+  // 섹터가 차지하는 호. 교점은 ±126.9° 이므로 그 안쪽으로만 앉혀
+  // 겹침부(렌즈)를 비워 둔다. t 가 커질수록 화면 아래로 내려간다.
+  from: -121,
+  to: 121,
+};
+/** 두 원의 교점 y좌표 — 렌즈의 위·아래 꼭짓점 */
+RING.lensY = Math.sqrt(RING.R ** 2 - RING.cx ** 2);
 
-/** s = -1(전두) … +1(후두) 에서의 반구 반폭. 뒤로 갈수록 좁아진다(후두엽). */
-const halfWidth = (s) =>
-  BRAIN.A * Math.sqrt(Math.max(0, 1 - s * s)) * (1 - 0.13 * s);
+const deg = (d) => (d * Math.PI) / 180;
 
-/** side: -1 좌반구 / +1 우반구, s: 앞뒤, d: 0=정중선 … 1=피질 경계 */
-function brainPoint(side, s, d) {
-  const w = Math.max(BRAIN.GAP + 8, halfWidth(s));
-  return { x: side * (BRAIN.GAP + d * (w - BRAIN.GAP)), y: s * BRAIN.B };
+/** side: -1 왼쪽 원환 / +1 오른쪽 원환.
+ *  t: 각 원환의 바깥쪽(렌즈 반대편) 0° 기준 각도. off: 반지름 오프셋(+ 는 바깥).
+ *  왼쪽 원환은 180° 를 기준으로 뒤집어, 두 원이 서로를 향해 열리게 한다. */
+function ringPoint(side, t, off = 0) {
+  const r = RING.R + off;
+  const a = deg(side > 0 ? t : 180 - t);
+  return { x: side * RING.cx + r * Math.cos(a), y: r * Math.sin(a) };
 }
 
-const HEMISPHERE = {
-  '-1': ['S02', 'S10', 'S01', 'S08', 'S09', 'S12'],
-  '1':  ['S03', 'S04', 'S11', 'S05', 'S06', 'S07'],
+/** 오른쪽 원환에 D3·D4, 왼쪽에 D1·D2 — 영역 하나가 정확히 섹터 3개다 */
+const RING_PLAN = {
+  '-1': ['S01', 'S08', 'S09', 'S02', 'S10', 'S11'],
+  '1':  ['S05', 'S06', 'S07', 'S03', 'S04', 'S12'],
 };
-const S_MIN = -0.84, S_MAX = 0.84;
 
-/** 섹터별 앞뒤 구간을 계산해 둔다. */
+/** 섹터별 호 구간 */
 function sectorSpans() {
   const map = new Map();
   for (const side of [-1, 1]) {
-    const list = HEMISPHERE[String(side)];
-    const w = (S_MAX - S_MIN) / list.length;
+    const list = RING_PLAN[String(side)];
+    const w = (RING.to - RING.from) / list.length;
     list.forEach((id, k) => {
-      map.set(id, { side, s0: S_MIN + k * w + w * 0.06, s1: S_MIN + (k + 1) * w - w * 0.06 });
+      map.set(id, {
+        side,
+        a0: RING.from + k * w + w * 0.08,
+        a1: RING.from + (k + 1) * w - w * 0.08,
+      });
     });
   }
   return map;
@@ -151,7 +169,7 @@ function buildModel(raw) {
   // ── 섹터 (피질과 백질 사이)
   for (const s of taxonomy.sectors) {
     const sp = spans.get(s.id);
-    const p = brainPoint(sp.side, (sp.s0 + sp.s1) / 2, 0.62);
+    const p = ringPoint(sp.side, (sp.a0 + sp.a1) / 2, 0);
     nodes.push({
       id: s.id, level: 'sector', no: s.no, label: s.label, color: s.color,
       domain: s.domain, side: sp.side, span: sp,
@@ -170,18 +188,18 @@ function buildModel(raw) {
     const sec = sectorById.get(sid);
     if (!sp || !sec) continue;
     list.forEach((p, j) => {
-      const s = sp.s0 + ((j + 0.5) / list.length) * (sp.s1 - sp.s0);
-      const d = 0.30 + 0.17 * (j % 3) / 2;
-      const pt = brainPoint(sp.side, s, d);
-      const deg = crossDeg.get(p.id) || 0;
+      const a = sp.a0 + ((j + 0.5) / list.length) * (sp.a1 - sp.a0);
+      const off = RING.inner - 16 * ((j % 3) / 2);
+      const pt = ringPoint(sp.side, a, off);
+      const degree = crossDeg.get(p.id) || 0;
       nodes.push({
         ...p,
         level: 'pledge', kind: 'pledge',
         color: sec.color, domain: sec.domain, sectorLabel: sec.label, side: sp.side,
-        crossDeg: deg, resolveCount: (p.resolves || []).length,
+        crossDeg: degree, resolveCount: (p.resolves || []).length,
         signals: [], status: null,
         r: Math.max(8, Math.min(23,
-          7 + 1.3 * Math.sqrt(p.weight || 5) + 1.7 * Math.sqrt((p.resolves || []).length) + 0.9 * Math.sqrt(deg))),
+          7 + 1.3 * Math.sqrt(p.weight || 5) + 1.7 * Math.sqrt((p.resolves || []).length) + 0.9 * Math.sqrt(degree))),
         tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
       });
     });
@@ -198,9 +216,9 @@ function buildModel(raw) {
     const sec = sectorById.get(sid);
     if (!sp || !sec) continue;
     list.forEach((d, i) => {
-      const s = sp.s0 + ((i + 0.5) / list.length) * (sp.s1 - sp.s0);
-      const depth = 0.78 + 0.15 * ((i % 3) / 2);
-      const pt = brainPoint(sp.side, s, depth);
+      const a = sp.a0 + ((i + 0.5) / list.length) * (sp.a1 - sp.a0);
+      const off = RING.outer + 20 * ((i % 3) / 2);
+      const pt = ringPoint(sp.side, a, off);
 
       const sigs = sigByDiag.get(d.id) || [];
       const load = signalLoad(sigs);
@@ -256,7 +274,7 @@ function buildModel(raw) {
       atRisk: kids.reduce((a, k) => a + k.atRisk, 0),
       signalLoad: kids.reduce((a, k) => a + k.signalLoad, 0),
       r: 21,
-      tx: cx * 0.36, ty: cy * 0.42, x: cx * 0.36, y: cy * 0.42,
+      tx: cx * 0.30, ty: cy * 0.34, x: cx * 0.30, y: cy * 0.34,
     });
   }
   const byId2 = new Map(nodes.map((n) => [n.id, n]));
@@ -320,7 +338,7 @@ function initCanvas() {
   gNode = gRoot.append('g').attr('class', 'nodes');
   tooltipEl = $('#tooltip');
 
-  drawBrain();
+  drawRings();
 
   state.zoom = d3.zoom()
     .scaleExtent([0.2, 4])
@@ -335,56 +353,46 @@ function initCanvas() {
      .on('click', (ev) => { if (ev.target.tagName === 'svg') clearFocus(); });
 }
 
-/** 노드 배치와 같은 halfWidth() 를 쓰므로 외곽선과 피질 노드가 정확히 맞물린다. */
-function drawBrain() {
-  const line = (pts) => pts.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+/** 배경 도형. 노드 좌표와 같은 RING 상수를 쓰므로 궤도와 정확히 맞물린다.
+ *  두 원이 겹쳐 만드는 렌즈가 수렴점이고, 그 안에 세종시 노드가 앉는다. */
+function drawRings() {
+  const { R, cx, outer, inner, lensY } = RING;
+
+  const defs = gBrain.append('defs');
+  const grad = defs.append('radialGradient').attr('id', 'lensGlow');
+  grad.append('stop').attr('offset', '0%').attr('stop-color', 'rgba(255,255,255,0.075)');
+  grad.append('stop').attr('offset', '60%').attr('stop-color', 'rgba(255,255,255,0.022)');
+  grad.append('stop').attr('offset', '100%').attr('stop-color', 'rgba(255,255,255,0)');
+
+  // 렌즈 — 두 원의 교집합
+  gBrain.append('path').attr('class', 'lens-fill')
+    .attr('d', `M0,${-lensY} A${R} ${R} 0 0 1 0,${lensY} A${R} ${R} 0 0 1 0,${-lensY} Z`);
+  gBrain.append('ellipse').attr('class', 'lens-glow')
+    .attr('cx', 0).attr('cy', 0).attr('rx', R - cx + 40).attr('ry', lensY * 0.82)
+    .attr('fill', 'url(#lensGlow)');
 
   for (const side of [-1, 1]) {
-    const outer = [];
-    for (let i = 0; i <= 90; i++) {
-      const s = -0.995 + (i / 90) * 1.99;
-      outer.push(brainPoint(side, s, 1));
-    }
-    const d = line(outer) +
-      `L${(side * BRAIN.GAP).toFixed(1)},${(0.995 * BRAIN.B).toFixed(1)}` +
-      `L${(side * BRAIN.GAP).toFixed(1)},${(-0.995 * BRAIN.B).toFixed(1)}Z`;
-    gBrain.append('path').attr('class', 'brain-lobe').attr('d', d);
-
-    // 뇌구(sulci) — 피질 결을 암시하는 곡선
-    for (const [depth, from, to, phase] of [
-      [0.32, -0.72, 0.62, 0.4], [0.48, -0.80, 0.74, 1.9],
-      [0.63, -0.84, 0.80, 3.1], [0.78, -0.86, 0.84, 4.6],
-    ]) {
-      const pts = [];
-      for (let i = 0; i <= 60; i++) {
-        const s = from + (i / 60) * (to - from);
-        pts.push(brainPoint(side, s, depth + 0.035 * Math.sin(s * 7 + phase)));
-      }
-      gBrain.append('path').attr('class', 'brain-sulcus').attr('d', line(pts));
-    }
+    const c = side * cx;
+    // 궤도 보조선 — 안쪽(공약)·중심(섹터)·바깥(진단)
+    gBrain.append('circle').attr('class', 'orbit orbit-faint')
+      .attr('cx', c).attr('cy', 0).attr('r', R + inner);
+    gBrain.append('circle').attr('class', 'orbit orbit-main')
+      .attr('cx', c).attr('cy', 0).attr('r', R);
+    gBrain.append('circle').attr('class', 'orbit orbit-faint')
+      .attr('cx', c).attr('cy', 0).attr('r', R + outer);
   }
 
-  // 소뇌 — 뒤쪽 두 덩이
-  for (const side of [-1, 1]) {
-    gBrain.append('ellipse').attr('class', 'brain-cerebellum')
-      .attr('cx', side * 118).attr('cy', BRAIN.B * 1.02)
-      .attr('rx', 104).attr('ry', 52)
-      .attr('transform', `rotate(${side * 10} ${side * 118} ${BRAIN.B * 1.02})`);
+  // 렌즈 윤곽을 한 번 더 그어 맞물림을 또렷하게
+  gBrain.append('path').attr('class', 'lens-edge')
+    .attr('d', `M0,${-lensY} A${R} ${R} 0 0 1 0,${lensY} A${R} ${R} 0 0 1 0,${-lensY} Z`);
+
+  // 수렴 눈금 — 렌즈에서 바깥으로 뻗는 아주 옅은 방사선
+  for (let i = 0; i < 4; i++) {
+    const a = deg(-58 + i * 39);
+    gBrain.append('line').attr('class', 'lens-tick')
+      .attr('x1', 0).attr('y1', 0)
+      .attr('x2', Math.cos(a) * (R - cx + 30)).attr('y2', Math.sin(a) * lensY * 0.9);
   }
-  // 뇌간
-  gBrain.append('path').attr('class', 'brain-stem')
-    .attr('d', `M-26,${BRAIN.B * 0.98} L26,${BRAIN.B * 0.98} L17,${BRAIN.B * 1.30} L-17,${BRAIN.B * 1.30} Z`);
-
-  // 정중열
-  gBrain.append('line').attr('class', 'brain-midline')
-    .attr('x1', 0).attr('y1', -BRAIN.B * 0.99).attr('x2', 0).attr('y2', BRAIN.B * 0.99);
-
-  gBrain.append('text').attr('class', 'brain-hemi-label')
-    .attr('x', -BRAIN.A * 0.72).attr('y', -BRAIN.B * 0.93)
-    .attr('text-anchor', 'middle').text('좌반구 · 물적 기반');
-  gBrain.append('text').attr('class', 'brain-hemi-label')
-    .attr('x', BRAIN.A * 0.72).attr('y', -BRAIN.B * 0.93)
-    .attr('text-anchor', 'middle').text('우반구 · 사람과 위상');
 }
 
 function simulate() {
@@ -442,40 +450,61 @@ function render() {
 
   enter.append('circle').attr('class', 'halo');
   enter.append('circle').attr('class', 'pulse');
-  enter.append('circle').attr('class', 'shape-circle node-shape');
-  enter.append('rect').attr('class', 'shape-rect node-shape');
-  enter.append('text').attr('class', 'status-glyph');
+  enter.append('circle').attr('class', 'mark-outer');     // 위험 노드의 이중 링
+  enter.append('circle').attr('class', 'mark-ring node-shape');
+  enter.append('circle').attr('class', 'mark-core');      // 채움 밀도 = 상태
+  enter.append('rect').attr('class', 'mark-diamond node-shape');
   enter.append('text').attr('class', 'node-label');
 
   const all = enter.merge(nodeSel);
   const isPledge = (n) => n.level === 'pledge';
+  // 상태는 색보다 '채움 밀도'가 먼저 말한다 — 색을 못 봐도 읽힌다
+  const FILL = { good: 0.20, warning: 0.36, serious: 0.54, critical: 0.72 };
 
-  all.select('circle.halo').attr('r', (n) => n.r + 3);
+  all.select('circle.halo').attr('r', (n) => n.r + 4);
   all.select('circle.pulse')
-    .attr('r', (n) => n.r + 2)
+    .attr('r', (n) => n.r + 3)
     .style('display', (n) => (n.status === 'critical' && n.level === 'diagnosis' ? null : 'none'));
 
-  all.select('circle.shape-circle')
+  all.select('circle.mark-outer')
+    .attr('r', (n) => n.r + 4.5)
+    .attr('fill', 'none')
+    .attr('stroke', (n) => nodeFill(n))
+    .attr('stroke-width', 0.9)
+    .attr('stroke-opacity', 0.55)
+    .style('display', (n) =>
+      (n.status === 'critical' || n.level === 'domain' || n.level === 'city') ? null : 'none');
+
+  all.select('circle.mark-ring')
     .style('display', (n) => (isPledge(n) ? 'none' : null))
     .attr('r', (n) => n.r)
-    .attr('fill', nodeFill)
-    .attr('stroke', (n) => (isAlerting(n) ? st[n.status].color : 'var(--page)'))
-    .attr('stroke-width', (n) => (isAlerting(n) ? 2 : 1.5));
+    .attr('fill', 'none')
+    .attr('stroke', nodeFill)
+    .attr('stroke-width', (n) =>
+      n.level === 'city' ? 2 : n.level === 'domain' ? 1.9 : n.level === 'sector' ? 1.7 : 1.5);
 
-  all.select('rect.shape-rect')
+  all.select('circle.mark-core')
+    .style('display', (n) => (isPledge(n) ? 'none' : null))
+    .attr('r', (n) => {
+      if (n.level === 'city') return n.r * 0.30;
+      if (n.level === 'domain') return n.r * 0.34;
+      if (n.level === 'sector') return n.r * (0.26 + 0.34 * (FILL[n.status] ?? 0.3));
+      return n.r * (FILL[n.status] ?? 0.25);
+    })
+    .attr('fill', nodeFill)
+    .attr('fill-opacity', (n) => (n.status === 'critical' ? 0.88 : 0.74));
+
+  // 공약은 마름모 — 색을 못 봐도 진단과 구분된다
+  all.select('rect.mark-diamond')
     .style('display', (n) => (isPledge(n) ? null : 'none'))
-    .attr('width', (n) => n.r * 1.75).attr('height', (n) => n.r * 1.75)
-    .attr('x', (n) => -n.r * 0.875).attr('y', (n) => -n.r * 0.875)
-    .attr('rx', 4)
-    .attr('fill', nodeFill)
-    .attr('stroke', 'var(--page)').attr('stroke-width', 1.5);
-
-  all.select('text.status-glyph')
-    .attr('y', 0.5)
-    .attr('fill', (n) => (n.status === 'warning' ? '#241c00' : '#2a0808'))
-    .style('display', (n) => (n.status && n.status !== 'good' && !isPledge(n) ? null : 'none'))
-    .style('font-size', (n) => Math.min(11, Math.max(7, n.r * 0.7)) + 'px')
-    .text((n) => (n.status ? st[n.status].icon : ''));
+    .attr('width', (n) => n.r * 1.42).attr('height', (n) => n.r * 1.42)
+    .attr('x', (n) => -n.r * 0.71).attr('y', (n) => -n.r * 0.71)
+    .attr('rx', 2.5)
+    .attr('transform', 'rotate(45)')
+    .attr('fill', (n) => n.color)
+    .attr('fill-opacity', 0.16)
+    .attr('stroke', (n) => n.color)
+    .attr('stroke-width', 1.5);
 
   all.select('text.node-label')
     .attr('class', (n) =>
@@ -483,7 +512,7 @@ function render() {
         : n.level === 'domain' ? ' node-label-lg'
         : n.level === 'sector' ? ' node-label-md' : ''))
     .attr('text-anchor', 'middle')
-    .attr('y', (n) => n.r + 12)
+    .attr('y', (n) => n.r + 13)
     .text((n) => n.label);
 
   state.sim.on('tick', () => {
@@ -785,10 +814,10 @@ function renderFilters() {
     }));
 
   const lt = [
-    ['resolves', '해소', '#8fa8bd', 'solid'],
-    ['synergy', '시너지', '#5a9c86', 'solid'],
-    ['dependency', '선후의존', '#6f8bb5', 'dashed'],
-    ['conflict', '상충', '#c76a52', 'dotted'],
+    ['resolves', '해소', '#7e93a8', 'solid'],
+    ['synergy', '시너지', '#4e8f79', 'solid'],
+    ['dependency', '선후의존', '#5f7fae', 'dashed'],
+    ['conflict', '상충', '#b8603f', 'dotted'],
     ['converge', '수렴축', 'rgba(255,255,255,.35)', 'solid'],
   ];
   $('#filter-link').innerHTML = lt.map(([id, label, color, style]) =>
@@ -810,8 +839,8 @@ function renderLegend() {
     <div class="legend-group">
       <h4>노드 (모양)</h4>
       <div class="legend-cols">
-        <div class="legend-item"><span class="legend-swatch legend-circle"></span>진단 · 피질</div>
-        <div class="legend-item"><span class="legend-swatch legend-square"></span>공약 · 백질</div>
+        <div class="legend-item"><span class="legend-swatch legend-circle"></span>진단 (바깥 궤도)</div>
+        <div class="legend-item"><span class="legend-swatch legend-diamond"></span>공약 (안쪽 궤도)</div>
       </div>
     </div>
     <div class="legend-cols">
@@ -829,13 +858,13 @@ function renderLegend() {
     <div class="legend-group">
       <h4>관계</h4>
       <div class="legend-cols">
-        <div class="legend-item"><span class="legend-stroke" style="border-top:2px solid #8fa8bd"></span>해소</div>
-        <div class="legend-item"><span class="legend-stroke" style="border-top:2px solid #5a9c86"></span>시너지</div>
-        <div class="legend-item"><span class="legend-stroke" style="border-top:2px dashed #6f8bb5"></span>선후의존</div>
-        <div class="legend-item"><span class="legend-stroke" style="border-top:2px dotted #c76a52"></span>상충</div>
+        <div class="legend-item"><span class="legend-stroke" style="border-top:2px solid #7e93a8"></span>해소</div>
+        <div class="legend-item"><span class="legend-stroke" style="border-top:2px solid #4e8f79"></span>시너지</div>
+        <div class="legend-item"><span class="legend-stroke" style="border-top:2px dashed #5f7fae"></span>선후의존</div>
+        <div class="legend-item"><span class="legend-stroke" style="border-top:2px dotted #b8603f"></span>상충</div>
       </div>
     </div>
-    <p class="legend-note">잔여위험 = 구조 심각도 × (1 − 대응감쇄) + 현장 신호. 노드를 누르면 연결이 홉 순서로 점등된다.</p>`;
+    <p class="legend-note">링이 <b>차오를수록</b> 위험이 크다 — 색을 못 봐도 읽힌다. 노드를 누르면 연결이 홉 순서로 점등된다.</p>`;
 }
 
 const AXIS_LABEL = {
@@ -941,7 +970,7 @@ function renderDetail(n) {
   const rel = state.links.filter((l) => ['synergy', 'dependency', 'conflict'].includes(l.type) &&
     (l.source.id === n.id || l.target.id === n.id));
   if (rel.length) {
-    const tc = { synergy: '#5a9c86', dependency: '#6f8bb5', conflict: '#c76a52' };
+    const tc = { synergy: '#4e8f79', dependency: '#5f7fae', conflict: '#b8603f' };
     const tl = { synergy: '시너지', dependency: '선후의존', conflict: '상충' };
     parts.push(`<div class="d-section"><h3>공약 간 연결 ${rel.length}</h3>${rel
       .sort((a, b) => (b.weight || 0) - (a.weight || 0))
@@ -1018,9 +1047,10 @@ function renderDetail(n) {
 function fitToScreen(ms = 600) {
   const rect = svg.node().getBoundingClientRect();
   if (rect.width < 10 || rect.height < 10) return;
-  const pad = 90;
-  const [x0, x1] = [-BRAIN.A - pad, BRAIN.A + pad];
-  const [y0, y1] = [-BRAIN.B - pad, BRAIN.B * 1.36 + pad];
+  const pad = 78;
+  const ext = RING.cx + RING.R + RING.outer + 26;
+  const [x0, x1] = [-ext - pad, ext + pad];
+  const [y0, y1] = [-(RING.R + RING.outer) - pad, RING.R + RING.outer + pad];
   const k = Math.min(rect.width / (x1 - x0), rect.height / (y1 - y0), 1.6);
   if (!Number.isFinite(k) || k <= 0) return;
   const t = d3.zoomIdentity
