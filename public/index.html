@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ThirdBrain — 세종시 정책 네트워크</title>
+<title>ThirdBrain — 세종시 12대 섹터 진단·공약 네트워크</title>
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='6' fill='%233987e5'/%3E%3Ccircle cx='6' cy='7' r='3' fill='%23199e70'/%3E%3Ccircle cx='27' cy='9' r='3' fill='%23c98500'/%3E%3Ccircle cx='8' cy='26' r='3' fill='%23ae55c1'/%3E%3Ccircle cx='26' cy='25' r='3' fill='%23d03b3b'/%3E%3C/svg%3E" />
 </head>
@@ -14,19 +14,19 @@
     <span class="brand-mark" aria-hidden="true"></span>
     <div class="brand-text">
       <strong>ThirdBrain</strong>
-      <span>세종시 정책 네트워크 · Policy Network Intelligence</span>
+      <span>세종시 12대 섹터 · 진단 → 공약 네트워크</span>
     </div>
   </div>
 
   <div class="topbar-tools">
     <label class="search">
-      <span class="sr-only">정책 검색</span>
-      <input id="search" type="search" placeholder="정책·부서·태그 검색  (/ 로 이동)" autocomplete="off" />
+      <span class="sr-only">진단·공약 검색</span>
+      <input id="search" type="search" placeholder="진단·공약 검색  (/ 로 이동)" autocomplete="off" />
     </label>
 
     <div class="seg" role="group" aria-label="보기 모드">
       <button class="seg-btn is-on" data-view="all">전체망</button>
-      <button class="seg-btn" data-view="alert">경보만</button>
+      <button class="seg-btn" data-view="gap">공약 공백</button>
       <button class="seg-btn" data-view="conflict">상충축</button>
     </div>
 
@@ -40,8 +40,8 @@
   <!-- ── 좌: 섹터 스코어보드 ─────────────────────────────── -->
   <aside class="panel panel-left" aria-label="섹터 현황">
     <div class="panel-head">
-      <h2>12 정책 섹터</h2>
-      <span class="hint">클릭 = 해당 섹터로 초점</span>
+      <h2>12대 섹터</h2>
+      <span class="hint">숫자 = 대응 커버리지</span>
     </div>
     <div id="sector-list" class="sector-list"></div>
 
@@ -50,7 +50,11 @@
     </div>
     <div class="filters">
       <fieldset class="filter-group">
-        <legend>상태</legend>
+        <legend>노드 종류</legend>
+        <div id="filter-kind" class="chips"></div>
+      </fieldset>
+      <fieldset class="filter-group">
+        <legend>진단 상태</legend>
         <div id="filter-status" class="chips"></div>
       </fieldset>
       <fieldset class="filter-group">
@@ -65,7 +69,7 @@
     <div class="stat-row" id="stat-row"></div>
 
     <div class="canvas-wrap">
-      <svg id="graph" role="img" aria-label="세종시 정책 네트워크 그래프"></svg>
+      <svg id="graph" role="img" aria-label="세종시 12대 섹터 진단·공약 네트워크 그래프"></svg>
 
       <div id="tooltip" class="tooltip" hidden></div>
 
@@ -85,12 +89,13 @@
   <!-- ── 우: 상세 ───────────────────────────────────────── -->
   <aside class="panel panel-right" id="detail" aria-live="polite">
     <div class="detail-empty" id="detail-empty">
-      <h2>정책 노드를 선택하세요</h2>
-      <p>노드를 클릭하면 해당 정책의 지표, 연결된 정책, 접수된 시민 신호가 여기에 표시됩니다.</p>
+      <h2>노드를 선택하세요</h2>
+      <p>바깥 고리는 <b>진단(문제)</b>, 안쪽은 <b>공약(해법)</b>입니다. 클릭하면 무엇이 무엇을 해소하는지, 어떤 시민 신호가 걸려 있는지 여기에 표시됩니다.</p>
       <ul class="howto">
-        <li><b>점의 크기</b> = 정책 비중 + 연결 수 + 시민 신호량</li>
-        <li><b>색상(hue)</b> = 4대 정책 영역 / <b>붉은색</b> = 위기·미비</li>
-        <li><b>선</b> = 시너지 · 선후의존 · 상충</li>
+        <li><b>● 원</b> = 진단 / <b>■ 사각</b> = 공약</li>
+        <li><b>붉은 점</b> = 겨냥한 공약이 없는 진단 — 공약 공백</li>
+        <li><b>크기</b> = 비중 + 연결 수 + 시민 신호량</li>
+        <li><b>색상</b> = 4대 정책 영역 (12섹터는 위치로 구분)</li>
         <li>드래그로 이동, 휠로 확대, 빈 곳 클릭으로 초점 해제</li>
       </ul>
     </div>
@@ -102,7 +107,7 @@
 <dialog id="dlg-signal" class="dlg">
   <form method="dialog" id="form-signal">
     <h2>시민 신호 입력</h2>
-    <p class="dlg-sub">민원·현장 위기·의회 지적을 정책 노드에 연결합니다. 연결 즉시 해당 노드가 커지고 심각도에 따라 붉게 전환됩니다.</p>
+    <p class="dlg-sub">민원·현장 위기·언론 보도를 <b>진단 항목</b>에 연결합니다. 연결 즉시 해당 노드가 커지고, 대응 공약이 없으면 붉게 전환됩니다.</p>
 
     <label>제목 <input name="title" required maxlength="200" placeholder="예: 응급실 야간 수용 거부 반복" /></label>
 
@@ -132,8 +137,8 @@
       <label>건수 <input name="count" type="number" min="1" value="1" /></label>
     </div>
 
-    <label>연결할 정책 <span class="req">(1개 이상)</span>
-      <input id="target-search" type="search" placeholder="정책명으로 검색해 추가" autocomplete="off" />
+    <label>연결할 진단 <span class="req">(1개 이상)</span>
+      <input id="target-search" type="search" placeholder="진단 내용으로 검색해 추가" autocomplete="off" />
     </label>
     <div id="target-results" class="target-results" hidden></div>
     <div id="target-chips" class="target-chips"></div>

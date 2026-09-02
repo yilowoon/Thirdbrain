@@ -1,5 +1,5 @@
 /**
- * ThirdBrain — 세종시 정책 네트워크 플랫폼
+ * ThirdBrain — 세종시 12대 섹터 진단·공약 네트워크
  * 의존성 없는 Node 내장 HTTP 서버. `node server.js` 만으로 실행된다.
  */
 const http = require('http');
@@ -78,38 +78,51 @@ async function serveStatic(req, res, urlPath) {
   }
 }
 
-/** 세 데이터 파일을 한 번에 내려주는 부트스트랩 엔드포인트. */
 async function getGraph() {
-  const [taxonomy, policies, links, signals] = await Promise.all([
+  const [taxonomy, diagnoses, pledges, links, signals] = await Promise.all([
     readJson('taxonomy.json'),
-    readJson('policies.json'),
+    readJson('diagnoses.json'),
+    readJson('pledges.json'),
     readJson('links.json'),
     readJson('signals.json'),
   ]);
   return {
     taxonomy,
-    policies: policies.policies,
+    diagnoses: diagnoses.diagnoses,
+    pledges: pledges.pledges,
     links: links.links,
     signals: signals.signals,
-    meta: { policies: policies._meta, links: links._meta, signals: signals._meta },
+    meta: {
+      diagnoses: diagnoses._meta,
+      pledges: pledges._meta,
+      links: links._meta,
+      signals: signals._meta,
+    },
   };
 }
+
+const idsOf = (arr) => new Set(arr.map((x) => x.id));
+const clamp01 = (v, fallback) => {
+  const n = +v;
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+};
 
 const routes = {
   'GET /api/graph': async (req, res) => sendJson(res, 200, await getGraph()),
 
+  /** 시민 신호를 진단 항목에 연결한다. */
   'POST /api/signals': async (req, res) => {
     const body = await readBody(req);
     const targets = Array.isArray(body.targets) ? body.targets.filter(Boolean) : [];
     if (!body.title || targets.length === 0) {
-      return sendJson(res, 400, { error: 'title 과 targets(1개 이상)는 필수입니다.' });
+      return sendJson(res, 400, { error: 'title 과 targets(진단 1개 이상)는 필수입니다.' });
+    }
+    const diagIds = idsOf((await readJson('diagnoses.json')).diagnoses);
+    const unknown = targets.filter((t) => !diagIds.has(t));
+    if (unknown.length) {
+      return sendJson(res, 400, { error: `존재하지 않는 진단 ID: ${unknown.join(', ')}` });
     }
     const file = await readJson('signals.json');
-    const policyIds = new Set((await readJson('policies.json')).policies.map((p) => p.id));
-    const unknown = targets.filter((t) => !policyIds.has(t));
-    if (unknown.length) {
-      return sendJson(res, 400, { error: `존재하지 않는 정책 ID: ${unknown.join(', ')}` });
-    }
     const signal = {
       id: 'G' + randomUUID().slice(0, 8),
       date: body.date || new Date().toISOString().slice(0, 10),
@@ -126,7 +139,8 @@ const routes = {
     sendJson(res, 201, { signal });
   },
 
-  'POST /api/policies': async (req, res) => {
+  /** 새 공약을 추가하고, 해소할 진단에 연결한다. */
+  'POST /api/pledges': async (req, res) => {
     const body = await readBody(req);
     if (!body.label || !body.sector) {
       return sendJson(res, 400, { error: 'label 과 sector 는 필수입니다.' });
@@ -135,35 +149,33 @@ const routes = {
     if (!taxonomy.sectors.some((s) => s.id === body.sector)) {
       return sendJson(res, 400, { error: `존재하지 않는 섹터: ${body.sector}` });
     }
-    const file = await readJson('policies.json');
-    const seq = file.policies.filter((p) => p.sector === body.sector).length + 1;
-    const policy = {
-      id: `P${body.sector.slice(1)}${String(seq).padStart(2, '0')}-${randomUUID().slice(0, 4)}`,
+    const diagIds = idsOf((await readJson('diagnoses.json')).diagnoses);
+    const resolves = (Array.isArray(body.resolves) ? body.resolves : []).filter((r) => diagIds.has(r));
+
+    const file = await readJson('pledges.json');
+    const seq = file.pledges.filter((p) => p.sector === body.sector).length + 1;
+    const pledge = {
+      id: `PL-${body.sector}-${String(seq).padStart(2, '0')}-${randomUUID().slice(0, 4)}`,
       sector: body.sector,
-      label: String(body.label).slice(0, 120),
-      dept: body.dept || '',
-      budget: Number.isFinite(+body.budget) ? +body.budget : 0,
-      start: body.start || new Date().toISOString().slice(0, 7),
-      end: body.end || '',
-      progress: clamp01(body.progress, 0),
-      planned: clamp01(body.planned, 0),
+      round: Number.isFinite(+body.round) ? +body.round : null,
+      label: String(body.label).slice(0, 160),
+      detail: String(body.detail || '').slice(0, 600),
+      resolves,
       weight: Math.min(10, Math.max(1, Math.round(+body.weight || 5))),
-      tags: Array.isArray(body.tags) ? body.tags.slice(0, 8) : [],
-      kpi: Array.isArray(body.kpi) ? body.kpi.slice(0, 5) : [],
+      kpi: Array.isArray(body.kpi) ? body.kpi.slice(0, 6) : [],
       isNew: true,
     };
-    file.policies.push(policy);
-    await writeJson('policies.json', file);
+    file.pledges.push(pledge);
+    await writeJson('pledges.json', file);
 
-    // 함께 넘어온 연결선이 있으면 links.json 에도 반영한다.
     const incoming = Array.isArray(body.links) ? body.links : [];
     if (incoming.length) {
       const linkFile = await readJson('links.json');
-      const ids = new Set(file.policies.map((p) => p.id));
+      const pledgeIds = idsOf(file.pledges);
       for (const l of incoming) {
-        if (!ids.has(l.target) || l.target === policy.id) continue;
+        if (!pledgeIds.has(l.target) || l.target === pledge.id) continue;
         linkFile.links.push({
-          source: policy.id,
+          source: pledge.id,
           target: l.target,
           type: ['synergy', 'dependency', 'conflict'].includes(l.type) ? l.type : 'synergy',
           weight: clamp01(l.weight, 0.6),
@@ -172,15 +184,43 @@ const routes = {
       }
       await writeJson('links.json', linkFile);
     }
-    sendJson(res, 201, { policy });
+    sendJson(res, 201, { pledge });
   },
 
+  /** 새 진단(현안)을 추가한다. */
+  'POST /api/diagnoses': async (req, res) => {
+    const body = await readBody(req);
+    if (!body.label || !body.sector) {
+      return sendJson(res, 400, { error: 'label 과 sector 는 필수입니다.' });
+    }
+    const taxonomy = await readJson('taxonomy.json');
+    if (!taxonomy.sectors.some((s) => s.id === body.sector)) {
+      return sendJson(res, 400, { error: `존재하지 않는 섹터: ${body.sector}` });
+    }
+    const file = await readJson('diagnoses.json');
+    const no = Math.max(0, ...file.diagnoses.filter((d) => d.sector === body.sector).map((d) => d.no)) + 1;
+    const diagnosis = {
+      id: `${body.sector}-${String(no).padStart(2, '0')}`,
+      sector: body.sector,
+      no,
+      label: String(body.label).slice(0, 160),
+      detail: String(body.detail || '').slice(0, 400),
+      weight: Math.min(10, Math.max(1, Math.round(+body.weight || 5))),
+      isNew: true,
+    };
+    file.diagnoses.push(diagnosis);
+    file._meta.count = file.diagnoses.length;
+    await writeJson('diagnoses.json', file);
+    sendJson(res, 201, { diagnosis });
+  },
+
+  /** 공약 간 횡단 관계를 추가한다. */
   'POST /api/links': async (req, res) => {
     const body = await readBody(req);
     const file = await readJson('links.json');
-    const ids = new Set((await readJson('policies.json')).policies.map((p) => p.id));
-    if (!ids.has(body.source) || !ids.has(body.target) || body.source === body.target) {
-      return sendJson(res, 400, { error: 'source/target 정책 ID가 올바르지 않습니다.' });
+    const pledgeIds = idsOf((await readJson('pledges.json')).pledges);
+    if (!pledgeIds.has(body.source) || !pledgeIds.has(body.target) || body.source === body.target) {
+      return sendJson(res, 400, { error: 'source/target 공약 ID가 올바르지 않습니다.' });
     }
     const link = {
       source: body.source,
@@ -194,11 +234,6 @@ const routes = {
     sendJson(res, 201, { link });
   },
 };
-
-function clamp01(v, fallback) {
-  const n = +v;
-  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
-}
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);

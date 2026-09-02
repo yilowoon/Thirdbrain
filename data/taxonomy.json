@@ -1,65 +1,49 @@
 {
   "_meta": {
-    "title": "세종시 정책 네트워크 분류체계",
-    "basis": "세종특별자치시 본청 조직도(11 실·국·본부 / 약 47과)를 정책 도메인 기준으로 재구성",
-    "source": "https://www.sejong.go.kr/kor/sub01_010101.do",
-    "colorRule": "대영역(domain)=색상(hue) / 섹터(sector)=명도단계+공간위치+라벨. 적색 계열은 위기·경보 상태 전용으로 예약."
+    "title": "세종시 12대 섹터 — 진단·공약 네트워크 분류체계",
+    "basis": "「세종시 진단 12대 섹터 정리」의 12대 섹터를 그대로 사용한다. 4대 영역(domain)은 색상 배정을 위한 상위 묶음이며, 섹터 정의 자체는 원자료를 변경하지 않는다.",
+    "source": "세종시 진단 12대 섹터 정리_Test.pdf / 세종시 12대 섹터 공약 브리핑 계획표_초안.pdf",
+    "colorRule": "대영역=색상(hue) / 섹터=명도단계+공간위치+라벨. 적색 계열은 '미대응·위기' 상태 전용으로 비워둔다."
   },
   "city": { "id": "SEJONG", "label": "세종특별자치시", "sublabel": "행정수도 완성" },
   "domains": [
-    { "id": "D1", "label": "공간·환경", "en": "Space & Environment", "color": "#199e70", "angle": 45 },
-    { "id": "D2", "label": "경제·산업", "en": "Economy & Industry", "color": "#c98500", "angle": 135 },
-    { "id": "D3", "label": "시민·복지", "en": "Citizens & Welfare", "color": "#3987e5", "angle": 225 },
-    { "id": "D4", "label": "행정·거버넌스", "en": "Governance", "color": "#ae55c1", "angle": 315 }
+    { "id": "D1", "label": "공간·환경·농업", "en": "Space, Environment & Agriculture", "color": "#199e70", "angle": 45 },
+    { "id": "D2", "label": "경제·산업·기술", "en": "Economy, Industry & Technology", "color": "#c98500", "angle": 135 },
+    { "id": "D3", "label": "시민의 삶", "en": "Citizens' Life", "color": "#3987e5", "angle": 225 },
+    { "id": "D4", "label": "도시위상·문화·안전", "en": "Status, Culture & Safety", "color": "#ae55c1", "angle": 315 }
   ],
   "sectors": [
-    { "id": "S01", "domain": "D1", "label": "도시공간·주택", "color": "#39bf89",
-      "orgs": ["도시주택국"], "depts": ["도시과", "건축과", "주택과", "토지정보과"],
-      "scope": "도시계획·행복도시 건설·주택공급·건축·지적" },
-    { "id": "S02", "domain": "D1", "label": "교통·모빌리티", "color": "#059f6d",
-      "orgs": ["교통국"], "depts": ["교통정책과", "대중교통과", "도로과", "지능형도시과"],
-      "scope": "BRT·자율주행·도로망·주차·스마트시티 인프라" },
-    { "id": "S03", "domain": "D1", "label": "환경·녹지·기후", "color": "#0f7c55",
-      "orgs": ["환경녹지국"], "depts": ["환경정책과", "자원순환과", "정원도시과", "물관리정책과", "산림자원과"],
-      "scope": "탄소중립·대기수질·자원순환·공원녹지·금강수변" },
-    { "id": "S04", "domain": "D2", "label": "경제·산업·일자리", "color": "#cd9c1f",
-      "orgs": ["경제산업국", "투자유치단"], "depts": ["경제정책과", "미래산업과", "기업지원과", "소상공인과", "산업입지과"],
-      "scope": "기업유치·산업단지·일자리·소상공인·미래산업" },
-    { "id": "S05", "domain": "D2", "label": "농업·도농상생", "color": "#a87f09",
-      "orgs": ["도농상생국"], "depts": ["도농정책기획과", "농업정책과", "우리농산물유통과", "동물정책과"],
-      "scope": "농업경쟁력·로컬푸드·읍면지역 활성화·동물복지" },
-    { "id": "S06", "domain": "D2", "label": "문화·체육·관광", "color": "#846305",
-      "orgs": ["문화체육관광국"], "depts": ["문화예술과", "한글문화도시과", "체육진흥과", "관광진흥과", "문화유산과"],
-      "scope": "한글문화도시·문화기반시설·생활체육·관광콘텐츠·문화유산" },
-    { "id": "S07", "domain": "D3", "label": "보건·복지", "color": "#62a7fd",
-      "orgs": ["보건복지국"], "depts": ["복지정책과", "돌봄건강과", "노인장애인과", "보건정책과"],
-      "scope": "사회복지·의료인프라·노인장애인·공공보건" },
-    { "id": "S08", "domain": "D3", "label": "교육·청년·인구", "color": "#3986e4",
-      "orgs": ["자치행정국", "기획조정실", "보건복지국"], "depts": ["교육지원과", "청년정책담당관", "인구여성가족과", "아동청소년과"],
-      "scope": "교육협력·청년정책·저출산 대응·보육·아동청소년" },
-    { "id": "S09", "domain": "D3", "label": "안전·재난", "color": "#1467c2",
-      "orgs": ["시민안전실", "소방본부"], "depts": ["안전정책과", "사회재난과", "자연재난과", "소방행정과", "119대응과", "화재예방과"],
-      "scope": "재난대응·생활안전·소방·풍수해·사회재난" },
-    { "id": "S10", "domain": "D4", "label": "행정혁신·디지털", "color": "#d57ae9",
-      "orgs": ["자치행정국", "기획조정실"], "depts": ["자치행정과", "회계과", "세정과", "세원관리과", "법무혁신담당관", "인공지능디지털담당관"],
-      "scope": "AI·디지털행정·조직인사·지방세·규제혁신" },
-    { "id": "S11", "domain": "D4", "label": "재정·기획·균형발전", "color": "#b45bc8",
-      "orgs": ["기획조정실", "감사관"], "depts": ["정책기획관", "예산담당관", "재정협력관", "균형발전담당관"],
-      "scope": "시정기획·예산·재정건전성·신도시·읍면 균형발전" },
-    { "id": "S12", "domain": "D4", "label": "시민참여·소통·협력", "color": "#943ca7",
-      "orgs": ["자치행정국", "시민안전실", "기획조정실"], "depts": ["시민소통과", "민원과", "대외협력담당관", "공보관"],
-      "scope": "주민자치·시민참여예산·민원·대외협력·시정홍보" }
+    { "id": "S01", "no": 1,  "domain": "D1", "label": "도시 인프라·정주환경", "color": "#39bf89", "angle": 15 },
+    { "id": "S08", "no": 8,  "domain": "D1", "label": "환경·지속가능성", "color": "#059f6d", "angle": 45 },
+    { "id": "S09", "no": 9,  "domain": "D1", "label": "농업·도농상생·미래도시농업", "color": "#0f7c55", "angle": 75 },
+
+    { "id": "S02", "no": 2,  "domain": "D2", "label": "경제·산업·자족기능", "color": "#cd9c1f", "angle": 105 },
+    { "id": "S10", "no": 10, "domain": "D2", "label": "과학기술·디지털 혁신", "color": "#a87f09", "angle": 135 },
+    { "id": "S11", "no": 11, "domain": "D2", "label": "국제화·글로벌 도시 전략", "color": "#846305", "angle": 165 },
+
+    { "id": "S05", "no": 5,  "domain": "D3", "label": "교육·인재양성", "color": "#62a7fd", "angle": 195 },
+    { "id": "S06", "no": 6,  "domain": "D3", "label": "복지·사회문제", "color": "#3986e4", "angle": 225 },
+    { "id": "S07", "no": 7,  "domain": "D3", "label": "보건·의료서비스", "color": "#1467c2", "angle": 255 },
+
+    { "id": "S03", "no": 3,  "domain": "D4", "label": "행정수도·정치 거버넌스", "color": "#d57ae9", "angle": 285 },
+    { "id": "S04", "no": 4,  "domain": "D4", "label": "문화·예술·도시정체성", "color": "#b45bc8", "angle": 315 },
+    { "id": "S12", "no": 12, "domain": "D4", "label": "안전·재난관리", "color": "#943ca7", "angle": 345 }
   ],
   "status": [
-    { "id": "good",     "label": "정상 추진", "color": "#0ca30c", "icon": "●" },
-    { "id": "warning",  "label": "주의",     "color": "#fab219", "icon": "▲" },
-    { "id": "serious",  "label": "미비·지연", "color": "#ec835a", "icon": "◆" },
-    { "id": "critical", "label": "위기",     "color": "#d03b3b", "icon": "■" }
+    { "id": "good",     "label": "대응 확보", "color": "#0ca30c", "icon": "●", "desc": "겨냥한 공약 2건 이상" },
+    { "id": "warning",  "label": "대응 착수", "color": "#fab219", "icon": "▲", "desc": "겨냥한 공약 1건" },
+    { "id": "serious",  "label": "현장 압력", "color": "#ec835a", "icon": "◆", "desc": "공약은 있으나 위기·고심각 시민 신호가 쌓인 지점" },
+    { "id": "critical", "label": "미대응",   "color": "#d03b3b", "icon": "■", "desc": "겨냥한 공약이 하나도 없는 진단 — 공약 공백" }
+  ],
+  "nodeKinds": [
+    { "id": "diagnosis", "label": "진단", "desc": "해결해야 할 문제. 공약이 붙지 않으면 붉게 남는다." },
+    { "id": "pledge",    "label": "공약", "desc": "진단을 해소하는 정책 과제." }
   ],
   "linkTypes": [
-    { "id": "converge",   "label": "수렴(구조)", "desc": "세부정책→정책→섹터→대영역→시 로 모이는 축" },
+    { "id": "converge",   "label": "수렴(구조)", "desc": "진단·공약 → 섹터 → 대영역 → 시 로 모이는 축" },
+    { "id": "resolves",   "label": "해소",     "desc": "공약이 어떤 진단을 겨냥하는가" },
     { "id": "synergy",    "label": "시너지",   "desc": "함께 추진하면 효과가 커지는 관계" },
-    { "id": "dependency", "label": "선후의존", "desc": "앞 정책이 끝나야 뒤 정책이 가능한 관계" },
+    { "id": "dependency", "label": "선후의존", "desc": "앞 과제가 끝나야 뒤 과제가 가능한 관계" },
     { "id": "conflict",   "label": "상충",     "desc": "자원·목표가 부딪히는 관계" }
   ]
 }
