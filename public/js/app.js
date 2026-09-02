@@ -123,6 +123,74 @@ function sectorSpans() {
   return map;
 }
 
+/* ── 우선순위 · 도시발전 영향력 ──────────────────────────────
+   점의 크기는 '연결이 많은가'가 아니라 '지금 중요한가'를 말해야 한다.
+     진단 : 잔여위험(지금 급한가) + 구조적 심각도(구조를 흔드는가)
+            + 파급(다른 섹터의 문제까지 물고 있는가)
+     공약 : 걷어내는 위험 총량(풀면 얼마나 내려가는가)
+            + 선행성(이게 막히면 뒤가 다 막히는가)
+   크기는 세제곱 곡선으로 매핑해 상위 소수만 눈에 띄게 커진다.        */
+
+function applyPriority(nodes, links, byId) {
+  // 파급 — 다른 섹터로 뻗은 연관·해소 연결 수
+  const reach = new Map();
+  for (const l of links) {
+    if (l.type === 'converge') continue;
+    const a = byId.get(l.source), b = byId.get(l.target);
+    if (!a || !b || a.sector === b.sector) continue;
+    reach.set(a.id, (reach.get(a.id) || 0) + 1);
+    reach.set(b.id, (reach.get(b.id) || 0) + 1);
+  }
+  // 선행성 — 이 공약이 선행조건이 되는 횟수
+  const leads = new Map();
+  for (const l of links) {
+    if (l.type !== 'dependency') continue;
+    leads.set(l.target, (leads.get(l.target) || 0) + 1);
+  }
+
+  for (const n of nodes) {
+    if (n.level === 'diagnosis') {
+      const spread = Math.min(1, (reach.get(n.id) || 0) / 5);
+      n.priority = 0.55 * n.risk + 0.30 * (n.severity || 50) + 15 * spread;
+    } else if (n.level === 'pledge') {
+      // 겨냥한 진단들의 심각도 합 = 이 공약이 걷어내는 위험 총량
+      const relieved = (n.resolves || [])
+        .map((id) => byId.get(id))
+        .filter(Boolean)
+        .reduce((a, d) => a + (d.severity || 0), 0);
+      const lead = Math.min(1, (leads.get(n.id) || 0) / 3);
+      n.priority = Math.min(100, 0.19 * relieved + 18 * lead + 2.0 * (n.weight || 5));
+    } else if (n.level === 'sector') {
+      n.priority = 0.6 * n.risk + 4 * n.atRisk;
+    } else {
+      n.priority = null;
+    }
+  }
+
+  // 계층 안에서 순위백분위를 내고, 세제곱으로 눌러 상위만 크게
+  const SIZE = {
+    diagnosis: [6.5, 26], pledge: [7, 23], sector: [13, 26],
+  };
+  for (const level of Object.keys(SIZE)) {
+    const group = nodes.filter((n) => n.level === level && Number.isFinite(n.priority));
+    if (!group.length) continue;
+    const sorted = group.slice().sort((a, b) => a.priority - b.priority);
+    const rank = new Map(sorted.map((n, i) => [n.id, group.length > 1 ? i / (group.length - 1) : 1]));
+    const [lo, hi] = SIZE[level];
+    for (const n of group) {
+      const pct = rank.get(n.id);
+      n.rankPct = pct;
+      n.r = lo + (hi - lo) * Math.pow(pct, 2.6);
+    }
+  }
+  for (const n of nodes) {
+    if (n.level === 'domain') n.r = 19;
+    else if (n.level === 'city') n.r = 26;
+    else if (n.level === 'org') n.r = 7.5;
+    else if (n.level === 'team') n.r = 4.6;
+  }
+}
+
 /** 한국어를 형태소 분석 없이 다루기 위한 문자 바이그램 집합 */
 function textGrams(text) {
   const clean = String(text || '').replace(/[^가-힣a-zA-Z0-9]+/g, ' ').trim().toLowerCase();
@@ -245,8 +313,7 @@ function buildModel(raw) {
         color: sec.color, domain: sec.domain, sectorLabel: sec.label, side: sp.side,
         crossDeg: degree, resolveCount: (p.resolves || []).length,
         signals: [], status: null,
-        r: Math.max(8, Math.min(23,
-          7 + 1.3 * Math.sqrt(p.weight || 5) + 1.7 * Math.sqrt((p.resolves || []).length) + 0.9 * Math.sqrt(degree))),
+        r: 10,   // applyPriority() 가 우선순위 기준으로 다시 정한다
         tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
       });
     });
@@ -278,8 +345,7 @@ function buildModel(raw) {
         signals: sigs, signalLoad: load,
         coveredBy: cover, coverage: cover.length,
         risk, status: riskStatus(risk),
-        r: Math.max(7, Math.min(25,
-          6 + 0.10 * risk + 3.0 * Math.log10(1 + load) + 0.8 * Math.sqrt(cover.length))),
+        r: 10,   // applyPriority() 가 우선순위 기준으로 다시 정한다
         tx: pt.x, ty: pt.y, x: pt.x, y: pt.y,
       });
     });
@@ -350,7 +416,7 @@ function buildModel(raw) {
     s.uncovered = diags.filter((k) => k.coverage === 0).length;
     s.atRisk = diags.filter((k) => k.status === 'critical').length;
     s.coverage = diags.length ? 1 - s.uncovered / diags.length : 0;
-    s.r = Math.max(14, Math.min(28, 12 + 0.13 * s.risk));
+    s.r = 16;   // applyPriority() 가 우선순위 기준으로 다시 정한다
   }
 
   // 영역 노드는 소속 섹터의 무게중심을 중심 쪽으로 당겨 배치한다(뇌량 부근)
@@ -427,7 +493,6 @@ function buildModel(raw) {
     }
   }
 
-  // 각 노드에 걸린 연결 수 — 선 굵기와 노드 위상의 근거가 된다
   const degree = new Map();
   for (const l of gLinks) {
     degree.set(l.source, (degree.get(l.source) || 0) + 1);
@@ -435,6 +500,7 @@ function buildModel(raw) {
   }
   for (const n of nodes) n.deg = degree.get(n.id) || 0;
 
+  applyPriority(nodes, gLinks, byId2);
   return { nodes, links: gLinks, byId: byId2, sectorById };
 }
 
@@ -562,8 +628,10 @@ function render() {
   linkSel.enter().append('path')
     .attr('class', (l) => `link link-${l.type}`)
     .merge(linkSel)
-    .attr('fill', (l) => `url(#lg${linkKey(l).replace(/[^A-Za-z0-9]/g, '_')})`)
-    .attr('stroke', 'none');
+    .attr('fill', 'none')
+    .attr('stroke', (l) => `url(#lg${linkKey(l).replace(/[^A-Za-z0-9]/g, '_')})`)
+    .attr('stroke-width', linkWidth)
+    .attr('stroke-linecap', 'round');
 
   // 채움 도형만으로는 관계 유형이 구분되지 않는다. 파선·점선 중심선을 덧그린다.
   const marked = state.links.filter((l) => l.type === 'dependency' || l.type === 'conflict');
@@ -685,7 +753,7 @@ function render() {
 
 /** 선의 기하와 그라데이션 좌표를 현재 노드 위치에 맞춘다. */
 function refreshLinks() {
-  gLink.selectAll('path.link').attr('d', taperPath);
+  gLink.selectAll('path.link').attr('d', linePath);
   gLinkMark.selectAll('line')
     .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
     .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
@@ -694,23 +762,17 @@ function refreshLinks() {
     .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
 }
 
-/** 노드 쪽 선 반폭. 연결이 많고 큰 노드일수록 두껍다. */
-function endWidth(n) {
-  return Math.max(0.35, Math.min(7, 0.105 * (n.r || 8) + 0.66 * Math.sqrt(n.deg || 1)));
-}
+/** 선은 관계가 있다는 사실만 알리면 된다. 굵기에 의미를 싣지 않고
+ *  육안으로 보이는 최소 두께의 실선으로 긋는다. */
+const LINE_W = {
+  converge: 0.5, affinity: 0.7, resolves: 0.9,
+  synergy: 1.0, dependency: 1.0, conflict: 1.1,
+};
+const linkWidth = (l) => LINE_W[l.type] ?? 0.8;
 
-/** 양끝 굵기가 다른 테이퍼 사각형. 굵은 쪽에서 얇은 쪽으로 자연스럽게 좁아진다. */
-function taperPath(l) {
-  const a = l.source, b = l.target;
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len, ny = dx / len;
-  const k = l.type === 'converge' ? 0.30 : l.type === 'resolves' ? 0.72 : 1;
-  const wa = endWidth(a) * k, wb = endWidth(b) * k;
-  return `M${(a.x + nx * wa).toFixed(1)},${(a.y + ny * wa).toFixed(1)}`
-    + `L${(b.x + nx * wb).toFixed(1)},${(b.y + ny * wb).toFixed(1)}`
-    + `L${(b.x - nx * wb).toFixed(1)},${(b.y - ny * wb).toFixed(1)}`
-    + `L${(a.x - nx * wa).toFixed(1)},${(a.y - ny * wa).toFixed(1)}Z`;
+function linePath(l) {
+  return `M${l.source.x.toFixed(1)},${l.source.y.toFixed(1)}`
+    + `L${l.target.x.toFixed(1)},${l.target.y.toFixed(1)}`;
 }
 
 /** 선의 색은 양끝 노드의 색을 잇는다 — 연결되면 양끝이 함께 블루로 물든다. */
@@ -898,6 +960,9 @@ function showTooltip(ev, n) {
   if (n.status) {
     out.push(`<div class="tt-row"><span>상태</span><b style="color:${st[n.status].color}">${st[n.status].icon} ${st[n.status].label}</b></div>`);
   }
+  if (Number.isFinite(n.priority)) {
+    out.push(`<div class="tt-row"><span>우선순위</span><b>${n.priority.toFixed(0)}<span style="color:var(--ink-3)"> · 상위 ${(100 - n.rankPct * 100).toFixed(0)}%</span></b></div>`);
+  }
   if (Number.isFinite(n.risk)) {
     out.push(`<div class="tt-row"><span>잔여위험</span><b>${n.risk.toFixed(0)}<span style="color:var(--ink-3)">/100</span></b></div>`);
   }
@@ -1069,12 +1134,14 @@ function renderLegend() {
     <div class="legend-group">
       <h4>관계</h4>
       <div class="legend-cols">
-        <div class="legend-item"><span class="legend-taper"></span>굵기 = 연결량</div>
+        <div class="legend-item"><span class="legend-stroke" style="border-top:1px solid rgba(255,255,255,.45)"></span>연결 있음</div>
         <div class="legend-item"><span class="legend-stroke" style="border-top:2px dashed rgba(255,255,255,.4)"></span>선후의존</div>
         <div class="legend-item"><span class="legend-stroke" style="border-top:2px dotted ${tx.status.find((s) => s.id === 'critical').color}"></span>상충</div>
       </div>
+      <p class="legend-note" style="margin-top:5px">선은 관계가 있다는 사실만 알린다. 굵기에 의미를 싣지 않는다.</p>
     </div>
-    <p class="legend-note">링이 <b>차오를수록</b> 위험이 크다. 선은 큰 노드 쪽이 두껍고 작은 노드 쪽으로 갈수록 얇아진다.</p>`;
+    <p class="legend-note"><b>점의 크기 = 우선순위</b> — 잔여위험·구조적 심각도·파급을 합산한 값으로,
+      상위 소수만 크게 그린다. 링이 <b>차오를수록</b> 위험이 크다.</p>`;
 }
 
 const AXIS_LABEL = {
@@ -1134,6 +1201,7 @@ function renderDetail(n) {
         <dt>대응 감쇄</dt><dd>−${Math.round(DAMP[Math.min(3, n.coverage)] * 100)}% (공약 ${n.coverage}건)</dd>
         <dt>현장 신호 가산</dt><dd>+${Math.min(12, n.signalLoad * 0.6).toFixed(0)}</dd>
         <dt><b>잔여위험</b></dt><dd><b style="color:${st[n.status].color}">${n.risk.toFixed(0)} / 100</b></dd>
+        <dt>우선순위 지수</dt><dd>${n.priority.toFixed(0)} <span style="color:var(--ink-3)">(상위 ${(100 - n.rankPct * 100).toFixed(0)}%)</span></dd>
       </dl>
     </div>`);
 

@@ -254,8 +254,8 @@ body {
 #graph.is-panning { cursor: grabbing; }
 
 /* ── 그래프 요소 ────────────────────────────────────── */
-/* 연결선은 양끝 굵기가 다른 채움 도형이다. 색은 양끝 노드를 잇는 그라데이션이 맡는다. */
-.link { stroke: none; pointer-events: none; transition: opacity .18s; }
+/* 연결선은 얇은 실선이다. 굵기에 의미를 싣지 않는다 — 색(그라데이션)만 양끝 노드를 잇는다. */
+.link { fill: none; pointer-events: none; transition: opacity .18s; }
 
 /* 관계 유형은 중심선 패턴으로 구분한다 */
 .link-mark { pointer-events: none; fill: none; transition: opacity .18s; }
@@ -609,6 +609,8 @@ body {
 .node.act .mark-ring   { stroke: var(--connect); stroke-width: 2.2; }
 .node.act .mark-core   { fill: var(--connect); fill-opacity: .95; }
 .node.act .mark-outer  { stroke: var(--connect); stroke-opacity: .8; }
+.link.act { stroke-width: 1.4; }
+
 .node.act .mark-diamond {
   stroke: var(--connect);
   fill: var(--connect);
