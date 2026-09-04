@@ -1023,9 +1023,12 @@ function refreshLinks() {
  *  육안으로 보이는 최소 두께의 실선으로 긋는다. */
 /* non-scaling-stroke 를 걸었으므로 이 값이 곧 화면 픽셀이다.
    굵기에 의미를 싣지 않되, 육안으로 보이는 최소선은 넘긴다. */
+/* 지금의 1/5. 화면 픽셀 단위이므로 이 값은 1픽셀의 5분의 1쯤 되는 실오라기다.
+   그만큼 옅어지는 것을 진하기를 끌어올려 메운다 — 폭이 0.2px 면 같은 색이라도
+   화면에 남는 양이 5분의 1이기 때문이다. */
 const LINE_W = {
-  converge: 0.8, affinity: 0.8, resolves: 0.9,
-  synergy: 0.9, dependency: 0.9, conflict: 1.0,
+  converge: 0.16, affinity: 0.16, resolves: 0.18,
+  synergy: 0.18, dependency: 0.18, conflict: 0.2,
 };
 const linkWidth = (l) => LINE_W[l.type] ?? 0.8;
 
