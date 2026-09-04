@@ -893,7 +893,8 @@ body:not(.intro) .stat-row { animation: chrome-in .5s ease both; }
 /* ① 문제 — 은빛으로 두 번 */
 .node.seq-a .mark-ring {
   stroke: var(--silver);
-  animation: seq-blink-a calc(.92s * var(--seq-t, 1)) ease-in-out 2 both;
+  /* 두 번 뛰어 --seq-a(진단 깜빡임 전체 길이)를 채운다 */
+  animation: seq-blink-a calc(var(--seq-a, 1500ms) / 2) ease-in-out 2 both;
 }
 .node.seq-a .node-label { fill: var(--silver); }
 

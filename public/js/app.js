@@ -1223,7 +1223,9 @@ function applyLabelVisibility() {
    한 박이 약 3.5초에서 약 7.5초가 된다. */
 const SEQ_T = 2.3;
 const ms = (v) => Math.round(v * SEQ_T);
-const SEQ = { travel: 1500, blinkA: ms(900), hold: 2600, gap: 1100 };
+/* blinkA(진단 깜빡임)와 travel(선 이동)은 배속 바깥에 둔 고정값이다.
+   lead 는 선이 출발하는 시점이라 깜빡임 길이와 따로 잡는다. */
+const SEQ = { travel: 1500, blinkA: 1500, lead: ms(405), hold: 2600, gap: 1100 };
 const BLINK_B = Math.round(620 * 3 * SEQ_T);   // CSS 의 seq-blink-b × 3 회
 const SEQ_GRAY = '#6f6d69';   // --ink-3. 속성 보간에는 var() 가 아니라 실제 값이 필요하다
 
@@ -1266,6 +1268,7 @@ function seqStart() {
   // 들어올 때마다 다른 쌍에서 시작한다 — 늘 같은 장면으로 열리지 않도록
   if (state.seqIdx === 0) state.seqIdx = Math.floor(Math.random() * state.seqPairs.length);
   document.documentElement.style.setProperty('--seq-t', SEQ_T);
+  document.documentElement.style.setProperty('--seq-a', SEQ.blinkA + 'ms');
   state.seqOn = true;
   state.seqTimer = setTimeout(seqBeat, ms(400));
 }
@@ -1323,8 +1326,8 @@ function seqBeat() {
 
   // ① 문제가 깜빡인다
   seqNode(a).classed('seq-a', true);
-  seqPing(a, ALARM, 2.4, 0, ms(820));
-  seqPing(a, ALARM, 2.0, ms(380), ms(760));
+  seqPing(a, ALARM, 2.4, 0, 780);
+  seqPing(a, ALARM, 2.0, 380, 740);
   seqLabel(a, 0, ALARM);
 
   // ② 점선이 그라데이션을 끌고 해법으로 건너간다
@@ -1358,7 +1361,7 @@ function seqBeat() {
     .attr('class', 'seq-line')
     .attr('d', d).attr('stroke', 'url(#seq-grad)').attr('opacity', 0);
 
-  const lead = SEQ.blinkA * 0.45;
+  const lead = SEQ.lead;
   glow.transition('in').delay(lead).duration(ms(240)).attr('opacity', 0.18);
   line.transition('in').delay(lead).duration(ms(240)).attr('opacity', 1);
   line.transition('band').delay(lead).duration(SEQ.travel).ease(d3.easeCubicInOut)
