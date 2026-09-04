@@ -686,7 +686,7 @@ const isAlerting = (n) => n.status === 'critical' || n.status === 'serious';
    ═════════════════════════════════════════════════════════════ */
 
 const svg = d3.select('#graph');
-let gRoot, gDefs, gBrain, gLink, gLinkMark, gSeq, gNode, tooltipEl;
+let gRoot, gDefs, gBrain, gLink, gLinkMark, gSeq, gNode, gSeqTop, tooltipEl;
 
 function initCanvas() {
   svg.selectAll('*').remove();
@@ -697,6 +697,7 @@ function initCanvas() {
   gLinkMark = gRoot.append('g').attr('class', 'link-marks');
   gSeq = gRoot.append('g').attr('class', 'seq').attr('aria-hidden', 'true');
   gNode = gRoot.append('g').attr('class', 'nodes');
+  gSeqTop = gRoot.append('g').attr('class', 'seq seq-top').attr('aria-hidden', 'true');
   tooltipEl = $('#tooltip');
 
   drawBackdrop();
@@ -1244,7 +1245,9 @@ function buildSeqPairs() {
 function seqStop() {
   state.seqOn = false;
   clearTimeout(state.seqTimer);
-  if (gSeq) { gSeq.interrupt(); gSeq.selectAll('*').interrupt().remove(); }
+  for (const g of [gSeq, gSeqTop]) {
+    if (g) { g.interrupt(); g.selectAll('*').interrupt().remove(); }
+  }
   gNode.selectAll('g.node.seq-a, g.node.seq-b').classed('seq-a', false).classed('seq-b', false);
 }
 
@@ -1267,7 +1270,7 @@ function seqLabel(n, delay, color) {
   const k = state.transform.k || 1;
   const up = 22 / k;                     // 화면 기준 22px 만큼 위
   const down = n.r + 11 + 15 / k;        // 제자리 라벨보다 한 칸 아래
-  gSeq.append('text')
+  gSeqTop.append('text')          // 노드 위 레이어 — 어떤 원에도 가리지 않는다
     .attr('class', 'seq-label')
     .attr('x', n.x)
     .attr('y', n.y - n.r - up)
@@ -1305,6 +1308,7 @@ function seqBeat() {
   if (a.x == null || b.x == null) { state.seqTimer = setTimeout(seqBeat, 300); return; }
 
   gSeq.selectAll('*').interrupt().remove();
+  gSeqTop.selectAll('*').interrupt().remove();
 
   const hl = highlightOf(b);
   const endTone = hl ? hl.color : TONE[6];
