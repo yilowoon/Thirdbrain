@@ -64,7 +64,7 @@ const state = {
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
-  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null, beam: null,
+  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null, beam: null, emph: [],
   labelBand: null,
   uiOpen: false, uiTimers: [],
 };
@@ -195,23 +195,32 @@ function applyPriority(nodes, links, byId) {
     leads.set(l.target, (leads.get(l.target) || 0) + 1);
   }
 
+  /* 진단을 먼저 매긴다. 공약의 크기가 이 값을 물려받기 때문이다.
+     진단 = 지금 남아 있는 위험 + 구조를 흔드는 정도 + 섹터를 넘는 파급.
+     잔여위험 자체가 4축 평가(구조성·체감도·악화성·권한결여)에
+     시민 신호(민원·보도·현장·시의회)를 얹고 대응만큼 깎은 값이다. */
   for (const n of nodes) {
-    if (n.level === 'diagnosis') {
-      const spread = Math.min(1, (reach.get(n.id) || 0) / 5);
-      n.priority = 0.55 * n.risk + 0.30 * (n.severity || 50) + 15 * spread;
-    } else if (n.level === 'pledge') {
-      // 겨냥한 진단들의 심각도 합 = 이 공약이 걷어내는 위험 총량
-      const relieved = (n.resolves || [])
-        .map((id) => byId.get(id))
-        .filter(Boolean)
-        .reduce((a, d) => a + (d.severity || 0), 0);
-      const lead = Math.min(1, (leads.get(n.id) || 0) / 3);
-      n.priority = Math.min(100, 0.19 * relieved + 18 * lead + 2.0 * (n.weight || 5));
-    } else if (n.level === 'sector') {
-      n.priority = 0.6 * n.risk + 4 * n.atRisk;
-    } else {
-      n.priority = null;
-    }
+    if (n.level !== 'diagnosis') continue;
+    const spread = Math.min(1, (reach.get(n.id) || 0) / 5);
+    n.priority = 0.55 * n.risk + 0.30 * (n.severity || 50) + 15 * spread;
+  }
+
+  /* 공약은 '가장 위협적인 문제를 겨냥했는가' 를 먼저 본다.
+     예전에는 겨냥한 진단들의 심각도 '합' 만 봤다. 그러면 작은 문제 여럿을
+     건드리는 공약이, 가장 큰 문제 하나를 정면으로 겨냥한 공약보다 커졌다.
+     큰 점에 걸린 답이 작은 점으로 나와 누르기조차 어려웠던 이유다. */
+  for (const n of nodes) {
+    if (n.level !== 'pledge') continue;
+    const hosts = (n.resolves || []).map((id) => byId.get(id)).filter(Boolean);
+    const worst = hosts.reduce((m, d) => Math.max(m, d.priority || 0), 0);
+    const relieved = hosts.reduce((a, d) => a + (d.severity || 0), 0);
+    const lead = Math.min(1, (leads.get(n.id) || 0) / 3);
+    n.priority = Math.min(100, 0.46 * worst + 0.10 * relieved + 14 * lead + 1.4 * (n.weight || 5));
+  }
+
+  for (const n of nodes) {
+    if (n.level === 'sector') n.priority = 0.6 * n.risk + 4 * n.atRisk;
+    else if (n.level !== 'diagnosis' && n.level !== 'pledge') n.priority = null;
   }
 
   /* ── 얽힘도(entanglement) → 색 단계 ─────────────────────────
@@ -256,19 +265,24 @@ function applyPriority(nodes, links, byId) {
   }
 
   // 계층 안에서 순위백분위를 내고, 세제곱으로 눌러 상위만 크게
+  /* [최소, 최대, 곡선]. 곡선이 클수록 상위만 두드러진다.
+     진단은 2.6 으로 눌러 가장 위협적인 몇 개만 크게 남기고,
+     공약은 1.7 로 완만히 둔다 — 답 쪽 점이 눌리지 않을 만큼은 되어야 한다. */
   const SIZE = {
-    diagnosis: [6.5, 26], pledge: [7, 23], sector: [13, 26],
+    diagnosis: [6.5, 26, 2.6], pledge: [9, 25, 1.7], sector: [13, 26, 2.6],
   };
   for (const level of Object.keys(SIZE)) {
     const group = nodes.filter((n) => n.level === level && Number.isFinite(n.priority));
     if (!group.length) continue;
     const sorted = group.slice().sort((a, b) => a.priority - b.priority);
     const rank = new Map(sorted.map((n, i) => [n.id, group.length > 1 ? i / (group.length - 1) : 1]));
-    const [lo, hi] = SIZE[level];
+    const [lo, hi, curve] = SIZE[level];
     for (const n of group) {
       const pct = rank.get(n.id);
       n.rankPct = pct;
-      n.r = lo + (hi - lo) * Math.pow(pct, 2.6);
+      n.r = lo + (hi - lo) * Math.pow(pct, curve);
+      n.r0 = null;            // 강조로 부풀렸던 값이 있으면 버린다
+      n.labelBoost = 1;
     }
   }
   // 강조 대상은 우선순위와 무관하게 가장 크게 — 시(市) 다음 크기다
@@ -671,6 +685,100 @@ function nodeFill(n) {
 }
 const isAlerting = (n) => n.status === 'critical' || n.status === 'serious';
 
+/* 노드의 치수를 한자리에 모은다. 그려 넣을 때도, 선택으로 한 점만
+   부풀릴 때도 같은 함수를 쓴다 — 두 곳에 흩어 두면 반드시 어긋난다. */
+
+// 상태는 색보다 '채움 밀도'가 먼저 말한다 — 색을 못 봐도 읽힌다
+const FILL = { good: 0.20, warning: 0.36, serious: 0.54, critical: 0.72 };
+const isPledge = (n) => n.level === 'pledge';
+const isHub = (n) => n.level === 'domain' || n.level === 'city';
+
+/** 라벨 크기는 점 크기를 따르되, 강조된 점은 labelBoost 만큼 더 키운다. */
+function labelSize(n) {
+  const base = n.level === 'city' ? 13.5 : n.level === 'domain' ? 12.5
+    : n.level === 'sector' ? 11
+    : Math.max(7.5, Math.min(10, 5.6 + n.r * 0.17));
+  return base * (n.labelBoost || 1);
+}
+
+function sizeMarks(sel) {
+  sel.select('circle.hit').attr('r', (n) => n.r + 4);
+  sel.select('circle.halo').attr('r', (n) => n.r + 4);
+  sel.select('circle.pulse')
+    .attr('r', (n) => n.r + 3)
+    .style('display', (n) => (n.status === 'critical' && n.level === 'diagnosis' ? null : 'none'));
+
+  // 강조 노드는 점등되면 블루로 물들지 않고 제 색으로 꽉 찬다
+  sel
+    .classed('is-highlight', (n) => !!highlightOf(n))
+    .style('--hl', (n) => (highlightOf(n) || {}).color || null);
+  sel.select('circle.hl-fill')
+    .attr('r', (n) => n.r * 0.9)
+    .attr('fill', (n) => (highlightOf(n) || {}).color || 'none');
+
+  sel.select('circle.ring-outer')
+    .style('display', (n) => (n.status === 'critical' || isHub(n) ? null : 'none'))
+    .attr('r', (n) => (isHub(n) ? n.r * 1.34 : n.r + 4.5))
+    .attr('fill', 'none')
+    .attr('stroke', nodeFill)
+    .attr('stroke-width', (n) => (isHub(n) ? 1.3 : 0.9))
+    .attr('stroke-opacity', (n) => (isHub(n) ? 0.62 : 0.55));
+
+  sel.select('circle.mark-ring')
+    .attr('r', (n) => n.r)
+    .attr('fill', 'none')
+    .attr('stroke', nodeFill)
+    .attr('stroke-dasharray', (n) => (n.level === 'team' ? '2 2' : null))
+    .attr('stroke-width', (n) =>
+      n.level === 'city' ? 2.4 : n.level === 'domain' ? 2 : n.level === 'sector' ? 1.7
+        : n.level === 'team' ? 1 : 1.5);
+
+  sel.select('circle.ring-inner')
+    .style('display', (n) => (isPledge(n) || isHub(n) ? null : 'none'))
+    .attr('r', (n) => (isHub(n) ? n.r * 0.60 : n.r * 0.55))
+    .attr('fill', 'none')
+    .attr('stroke', nodeFill)
+    .attr('stroke-width', (n) => (isHub(n) ? 1.5 : 1.3))
+    .attr('stroke-opacity', (n) => (isHub(n) ? 0.85 : 0.9));
+
+  sel.select('circle.mark-core')
+    .style('display', (n) => (isPledge(n) || n.level === 'domain' || n.level === 'team' ? 'none' : null))
+    .attr('r', (n) => {
+      if (n.level === 'city') return n.r * 0.26;
+      if (n.level === 'org') return n.r * 0.30;
+      if (n.level === 'sector') return n.r * (0.26 + 0.34 * (FILL[n.status] ?? 0.3));
+      return n.r * (FILL[n.status] ?? 0.25);
+    })
+    .attr('fill', nodeFill)
+    .attr('fill-opacity', (n) => (n.status === 'critical' ? 0.88 : 0.74));
+
+  // 작은 점에도 라벨을 붙인다. 앞자리는 그 노드가 내건 값이다.
+  sel.select('text.node-label')
+    .attr('class', (n) =>
+      'node-label' + (n.level === 'city' ? ' node-label-xl'
+        : n.level === 'domain' ? ' node-label-lg'
+        : n.level === 'sector' ? ' node-label-md'
+        : ' node-label-sm'))
+    .attr('text-anchor', 'middle')
+    .attr('y', (n) => n.r + 11)
+    .style('font-size', (n) => labelSize(n) + 'px')
+    .text((n) => `${nodeValue(n)}:${n.label}`);
+
+}
+
+function renderNodes(enter, nodeSel) {
+  const all = enter.merge(nodeSel);
+
+  /* 모양은 모두 원이다. 대신 링 개수로 계층을 말한다.
+       팀     점선 링 하나
+       과     링 하나 + 작은 점
+       진단   링 하나 + 채움(채움 밀도 = 상태)
+       공약   이중 링
+       영역·시 삼중 동심원  */
+  sizeMarks(all);
+  return all;
+}
+
 /* ═════════════════════════════════════════════════════════════
    4. 캔버스
    ═════════════════════════════════════════════════════════════ */
@@ -902,82 +1010,7 @@ function render() {
   enter.append('circle').attr('class', 'mark-core');             // 채움 = 상태
   enter.append('text').attr('class', 'node-label');
 
-  const all = enter.merge(nodeSel);
-  // 상태는 색보다 '채움 밀도'가 먼저 말한다 — 색을 못 봐도 읽힌다
-  const FILL = { good: 0.20, warning: 0.36, serious: 0.54, critical: 0.72 };
-
-  /* 모양은 모두 원이다. 대신 링 개수로 계층을 말한다.
-       팀     점선 링 하나
-       과     링 하나 + 작은 점
-       진단   링 하나 + 채움(채움 밀도 = 상태)
-       공약   이중 링
-       영역·시 삼중 동심원  */
-  const isPledge = (n) => n.level === 'pledge';
-  const isHub = (n) => n.level === 'domain' || n.level === 'city';
-
-  all.select('circle.hit').attr('r', (n) => n.r + 4);
-  all.select('circle.halo').attr('r', (n) => n.r + 4);
-  all.select('circle.pulse')
-    .attr('r', (n) => n.r + 3)
-    .style('display', (n) => (n.status === 'critical' && n.level === 'diagnosis' ? null : 'none'));
-
-  // 강조 노드는 점등되면 블루로 물들지 않고 제 색으로 꽉 찬다
-  all
-    .classed('is-highlight', (n) => !!highlightOf(n))
-    .style('--hl', (n) => (highlightOf(n) || {}).color || null);
-  all.select('circle.hl-fill')
-    .attr('r', (n) => n.r * 0.9)
-    .attr('fill', (n) => (highlightOf(n) || {}).color || 'none');
-
-  all.select('circle.ring-outer')
-    .style('display', (n) => (n.status === 'critical' || isHub(n) ? null : 'none'))
-    .attr('r', (n) => (isHub(n) ? n.r * 1.34 : n.r + 4.5))
-    .attr('fill', 'none')
-    .attr('stroke', nodeFill)
-    .attr('stroke-width', (n) => (isHub(n) ? 1.3 : 0.9))
-    .attr('stroke-opacity', (n) => (isHub(n) ? 0.62 : 0.55));
-
-  all.select('circle.mark-ring')
-    .attr('r', (n) => n.r)
-    .attr('fill', 'none')
-    .attr('stroke', nodeFill)
-    .attr('stroke-dasharray', (n) => (n.level === 'team' ? '2 2' : null))
-    .attr('stroke-width', (n) =>
-      n.level === 'city' ? 2.4 : n.level === 'domain' ? 2 : n.level === 'sector' ? 1.7
-        : n.level === 'team' ? 1 : 1.5);
-
-  all.select('circle.ring-inner')
-    .style('display', (n) => (isPledge(n) || isHub(n) ? null : 'none'))
-    .attr('r', (n) => (isHub(n) ? n.r * 0.60 : n.r * 0.55))
-    .attr('fill', 'none')
-    .attr('stroke', nodeFill)
-    .attr('stroke-width', (n) => (isHub(n) ? 1.5 : 1.3))
-    .attr('stroke-opacity', (n) => (isHub(n) ? 0.85 : 0.9));
-
-  all.select('circle.mark-core')
-    .style('display', (n) => (isPledge(n) || n.level === 'domain' || n.level === 'team' ? 'none' : null))
-    .attr('r', (n) => {
-      if (n.level === 'city') return n.r * 0.26;
-      if (n.level === 'org') return n.r * 0.30;
-      if (n.level === 'sector') return n.r * (0.26 + 0.34 * (FILL[n.status] ?? 0.3));
-      return n.r * (FILL[n.status] ?? 0.25);
-    })
-    .attr('fill', nodeFill)
-    .attr('fill-opacity', (n) => (n.status === 'critical' ? 0.88 : 0.74));
-
-  // 작은 점에도 라벨을 붙인다. 앞자리는 그 노드가 내건 값이다.
-  all.select('text.node-label')
-    .attr('class', (n) =>
-      'node-label' + (n.level === 'city' ? ' node-label-xl'
-        : n.level === 'domain' ? ' node-label-lg'
-        : n.level === 'sector' ? ' node-label-md'
-        : ' node-label-sm'))
-    .attr('text-anchor', 'middle')
-    .attr('y', (n) => n.r + 11)
-    .style('font-size', (n) =>
-      (n.level === 'city' ? 13.5 : n.level === 'domain' ? 12.5 : n.level === 'sector' ? 11
-        : Math.max(7.5, Math.min(10, 5.6 + n.r * 0.17))) + 'px')
-    .text((n) => `${nodeValue(n)}:${n.label}`);
+  const all = renderNodes(enter, nodeSel);
 
   state.labelBand = null;   // 라벨을 새로 지었으니 캐시는 버린다
 
@@ -1255,7 +1288,30 @@ function strongestCounterpart(n) {
   return out[0];
 }
 
+/* 고른 점과 그 짝은 한동안 크게 둔다. 원래 크기는 r0 에 넣어 두었다가
+   초점이 풀리면 그대로 되돌린다. 라벨도 함께 커진다. */
+const EMPH = { self: [1.35, 1.75], mate: [1.9, 1.9] };   // [점 배율, 라벨 배율]
+
+function emphasize(n, [rk, lk]) {
+  if (!n) return;
+  if (n.r0 == null) n.r0 = n.r;
+  n.r = n.r0 * rk;
+  n.labelBoost = lk;
+  sizeMarks(seqNode(n));
+  (state.emph = state.emph || []).push(n);
+}
+
+function unemphasize() {
+  for (const n of state.emph || []) {
+    if (n.r0 != null) { n.r = n.r0; n.r0 = null; }
+    n.labelBoost = 1;
+    sizeMarks(seqNode(n));
+  }
+  state.emph = [];
+}
+
 function clearBeam() {
+  unemphasize();
   if (gSeq) gSeq.selectAll('.beam, .beam-glow').interrupt().remove();
   if (gDefs) gDefs.select('#beam-grad').remove();
   if (gNode) gNode.selectAll('g.node.beam-b').classed('beam-b', false).style('--beam', null);
@@ -1276,6 +1332,10 @@ function drawBeam(a, b) {
   grad.append('stop').attr('offset', '0%').attr('stop-color', base).attr('stop-opacity', 0.30);
   grad.append('stop').attr('offset', '45%').attr('stop-color', base).attr('stop-opacity', 0.85);
   grad.append('stop').attr('offset', '100%').attr('stop-color', tip).attr('stop-opacity', 1);
+
+  // 고른 문제와 그 답을 둘 다 키운다. 답 쪽이 더 크다 — 눌러야 할 점이므로.
+  emphasize(a, EMPH.self);
+  emphasize(b, EMPH.mate);
 
   const d = `M${a.x},${a.y}L${b.x},${b.y}`;
   gSeq.append('path').attr('class', 'beam-glow').attr('d', d).attr('stroke', 'url(#beam-grad)');
