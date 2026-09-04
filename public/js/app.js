@@ -1217,6 +1217,7 @@ function applyLabelVisibility() {
    ═════════════════════════════════════════════════════════════ */
 
 const SEQ = { travel: 1500, blinkA: 900, hold: 900, gap: 500 };
+const SEQ_GRAY = '#6f6d69';   // --ink-3. 속성 보간에는 var() 가 아니라 실제 값이 필요하다
 
 /** 진단 → 그 진단을 겨냥한 공약. '가장 직접적인' 순으로 세운다.
  *  겨냥하는 공약이 적은 진단일수록 그 한 줄이 직접적이고,
@@ -1260,6 +1261,30 @@ function seqStart() {
 
 const seqNode = (n) => gNode.selectAll('g.node').filter((d) => d.id === n.id);
 
+/** 깜빡이는 점의 이름을 위에 크게 띄웠다가, 깜빡임이 잦아드는 박자에 맞춰
+ *  아래로 내리며 그레이로 지운다. 글자 크기는 배율과 무관하게 일정하다. */
+function seqLabel(n, delay, color) {
+  const k = state.transform.k || 1;
+  const up = 22 / k;                     // 화면 기준 22px 만큼 위
+  const down = n.r + 11 + 15 / k;        // 제자리 라벨보다 한 칸 아래
+  gSeq.append('text')
+    .attr('class', 'seq-label')
+    .attr('x', n.x)
+    .attr('y', n.y - n.r - up)
+    .attr('text-anchor', 'middle')
+    .style('font-size', (21 / k).toFixed(2) + 'px')
+    .attr('fill', color)
+    .attr('opacity', 0)
+    .text(`${nodeValue(n)}:${n.label}`)
+    .transition('in').delay(delay).duration(260).attr('opacity', 1)
+    .transition('out').delay(480).duration(1000).ease(d3.easeCubicInOut)
+      .attr('y', n.y + down)
+      .style('font-size', (10.5 / k).toFixed(2) + 'px')
+      .attr('fill', SEQ_GRAY)
+      .attr('opacity', 0)
+      .remove();
+}
+
 /** 한 점에서 파문이 번졌다 사라진다. */
 function seqPing(n, color, grow, delay, dur) {
   gSeq.append('circle')
@@ -1288,6 +1313,7 @@ function seqBeat() {
   seqNode(a).classed('seq-a', true);
   seqPing(a, ALARM, 2.4, 0, 820);
   seqPing(a, ALARM, 2.0, 380, 760);
+  seqLabel(a, 0, ALARM);
 
   // ② 점선이 그라데이션을 끌고 해법으로 건너간다
   const dx = b.x - a.x, dy = b.y - a.y;
@@ -1334,6 +1360,7 @@ function seqBeat() {
     seqPing(b, endTone, 3.1, 0, 900);
     seqPing(b, endTone, 2.6, 340, 860);
     seqPing(b, endTone, 2.2, 680, 820);
+    seqLabel(b, 0, endTone);
 
     line.transition('out').delay(SEQ.hold).duration(420).attr('opacity', 0).remove();
     glow.transition('out').delay(SEQ.hold).duration(420).attr('opacity', 0).remove();

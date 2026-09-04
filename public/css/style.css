@@ -925,3 +925,14 @@ body:not(.intro) .stat-row { animation: chrome-in .5s ease both; }
   .node.seq-a .mark-ring, .node.seq-b .mark-ring,
   .node.seq-b .ring-outer, .node.seq-b .ring-inner { animation: none; }
 }
+
+/* 시퀀스가 짚는 점의 이름 — 위에 크게 떴다가 아래로 내리며 그레이로 지워진다 */
+.seq-label {
+  font-weight: 600;
+  letter-spacing: .01em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: var(--page);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
