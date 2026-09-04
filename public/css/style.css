@@ -1000,3 +1000,44 @@ body.ui-top .stat-row { animation: chrome-in .55s ease both; }
   stroke-width: 4px;
   stroke-linejoin: round;
 }
+
+/* ══ 선택한 점 → 반대쪽 짝 한 줄 ═══════════════════════════
+   나머지 선이 은빛 실오라기로 물러난 자리에서 이 한 줄만 점화색으로 남는다.
+   실선인 것은 의도다 — 점선 무리 속에서 곧바로 갈라져 보여야 한다. */
+.beam {
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.beam-glow {
+  fill: none;
+  stroke-width: 7;
+  opacity: .17;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+  filter: blur(1.2px);
+}
+
+/* 짝은 계속 깜빡인다 — 어느 점이 답인지 눈이 놓치지 않게 */
+.node.beam-b .mark-ring,
+.node.beam-b .ring-outer,
+.node.beam-b .ring-inner {
+  stroke: var(--beam);
+  stroke-opacity: 1;
+  animation: beam-blink 1.5s ease-in-out infinite;
+}
+.node.beam-b .hl-fill  { opacity: .55; fill: var(--beam); }
+.node.beam-b .node-label { fill: var(--beam); font-weight: 600; }
+
+@keyframes beam-blink {
+  0%, 100% { stroke-opacity: .45; stroke-width: 1.6; }
+  50%      { stroke-opacity: 1;   stroke-width: 3.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node.beam-b .mark-ring,
+  .node.beam-b .ring-outer,
+  .node.beam-b .ring-inner { animation: none; stroke-width: 2.6; }
+}

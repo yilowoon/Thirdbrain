@@ -64,7 +64,7 @@ const state = {
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
-  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null,
+  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null, beam: null,
   labelBand: null,
   uiOpen: false, uiTimers: [],
 };
@@ -1250,7 +1250,62 @@ function buildSeqPairs() {
   return pairs;
 }
 
+/* ── 선택한 점과 반대쪽 짝을 잇는 한 줄 ──────────────────
+   나머지 선이 은빛 실오라기로 물러난 자리에서, 이 한 줄만 점화색으로 남는다.
+   진단을 고르면 그 문제를 가장 곧게 겨냥한 공약이, 공약을 고르면 그 공약이
+   가장 곧게 겨냥한 진단이 깜빡인다. */
+
+/** 반대쪽에서 가장 강하게 맞물린 짝. 진단 ↔ 공약만 본다. */
+function strongestCounterpart(n) {
+  if (!n || (n.level !== 'diagnosis' && n.level !== 'pledge')) return null;
+  const out = [];
+  for (const l of state.links) {
+    if (l.type !== 'resolves') continue;
+    const pl = l.source, dg = l.target;           // resolves 는 공약 → 진단
+    if (!pl || !dg || !pl.id || !dg.id) continue;
+    if (n.level === 'diagnosis' && dg.id === n.id) out.push(pl);
+    if (n.level === 'pledge' && pl.id === n.id) out.push(dg);
+  }
+  if (!out.length) return null;
+  // 겨냥하는 상대가 적을수록 그 한 줄이 직접적이다. 같으면 우선순위가 높은 쪽.
+  const span = (x) => (x.level === 'pledge' ? (x.resolveCount || 1) : (x.coverage || 1));
+  out.sort((a, b) => span(a) - span(b) || (b.priority || 0) - (a.priority || 0));
+  return out[0];
+}
+
+function clearBeam() {
+  if (gSeq) gSeq.selectAll('.beam, .beam-glow').interrupt().remove();
+  if (gDefs) gDefs.select('#beam-grad').remove();
+  if (gNode) gNode.selectAll('g.node.beam-b').classed('beam-b', false).style('--beam', null);
+  state.beam = null;
+}
+
+/** a(고른 점) → b(짝) 를 잇는 점화색 그라데이션 한 줄. */
+function drawBeam(a, b) {
+  clearBeam();
+  if (!a || !b || a.x == null || b.x == null) return;
+
+  const base = state.igniteColor || CONNECT;          // 강조 계열이면 그 색을 따른다
+  const tip = state.igniteColor || CONNECT_HI;
+
+  const grad = gDefs.append('linearGradient')
+    .attr('id', 'beam-grad').attr('gradientUnits', 'userSpaceOnUse')
+    .attr('x1', a.x).attr('y1', a.y).attr('x2', b.x).attr('y2', b.y);
+  grad.append('stop').attr('offset', '0%').attr('stop-color', base).attr('stop-opacity', 0.30);
+  grad.append('stop').attr('offset', '45%').attr('stop-color', base).attr('stop-opacity', 0.85);
+  grad.append('stop').attr('offset', '100%').attr('stop-color', tip).attr('stop-opacity', 1);
+
+  const d = `M${a.x},${a.y}L${b.x},${b.y}`;
+  gSeq.append('path').attr('class', 'beam-glow').attr('d', d).attr('stroke', 'url(#beam-grad)');
+  gSeq.append('path').attr('class', 'beam').attr('d', d).attr('stroke', 'url(#beam-grad)')
+    .attr('opacity', 0).transition().duration(360).attr('opacity', 1);
+
+  seqNode(b).classed('beam-b', true).style('--beam', tip);
+  state.beam = { a: a.id, b: b.id };
+}
+
 function seqStop() {
+  clearBeam();
   state.seqOn = false;
   clearTimeout(state.seqTimer);
   for (const g of [gSeq, gSeqTop]) {
@@ -1456,6 +1511,8 @@ function setFocus(id) {
   $$('.sector-row').forEach((el) => el.classList.toggle('is-on', el.dataset.id === id));
 
   const n = state.byId.get(id);
+  drawBeam(n, strongestCounterpart(n));       // 반대쪽 짝으로 가는 한 줄만 점화색으로
+
   if (state.uiOpen) renderDetail(n);
   else revealChrome(() => renderDetail(n));   // 오른쪽 바가 열리는 차례에 그린다
 }
