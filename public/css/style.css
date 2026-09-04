@@ -535,6 +535,7 @@ body {
   body { overflow: auto; }
   /* 한 줄로 쌓이는 폭에서는 열림 단계와 무관하게 항상 한 칸이다 */
   .layout { grid-template-columns: 1fr; }
+  .panel-left, .stage, .panel-right { grid-column: 1; }
   .panel-left, .panel-right { border: 0; border-top: 1px solid var(--hairline); }
   /* 세로로 쌓이는 폭에서는 캔버스가 줄어들지 않게 못 박는다.
      flex: 1 1 auto 로 두면 바가 열리는 순간 눌려 사라진다. */
@@ -880,6 +881,15 @@ body.is-readonly #btn-add { opacity: .45; }
 
 body:not(.ui-left-mount)  .panel-left,
 body:not(.ui-right-mount) .panel-right { display: none; }
+
+/* 자리를 못 박는다. display:none 인 요소는 격자 항목이 아니므로,
+   자동 배치에 맡기면 바가 닫혀 있는 동안 무대가 1번 칸(폭 0)으로 밀려
+   캔버스가 통째로 사라진다. */
+@media (min-width: 981px) {
+  .panel-left  { grid-column: 1; }
+  .stage       { grid-column: 2; }
+  .panel-right { grid-column: 3; }
+}
 
 body:not(.ui-left)  .panel-left  { opacity: 0; transform: translateX(-20px); }
 body:not(.ui-right) .panel-right { opacity: 0; transform: translateX(20px); }
