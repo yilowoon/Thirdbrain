@@ -1266,6 +1266,7 @@ function moveTooltip(ev) {
 const hideTooltip = () => { tooltipEl.hidden = true; };
 
 function setFocus(id) {
+  revealChrome();
   state.focus = id;
   applyVisibility();
   applyLabelVisibility();
@@ -1634,9 +1635,10 @@ function renderDetail(n) {
    8. 컨트롤
    ═════════════════════════════════════════════════════════════ */
 
-function fitToScreen(ms = 600) {
+/** 지금 배치를 화면에 꽉 채우는 변환. 캔버스가 아직 없으면 null. */
+function fitTransform() {
   const rect = svg.node().getBoundingClientRect();
-  if (rect.width < 10 || rect.height < 10) return;
+  if (rect.width < 10 || rect.height < 10) return null;
   const pad = 70;
   let x0, x1, y0, y1;
   if (state.layout === 'split') {
@@ -1650,12 +1652,60 @@ function fitToScreen(ms = 600) {
     [y0, y1] = [-(RING.R + edge) - pad, RING.R + edge + pad];
   }
   const k = Math.min(rect.width / (x1 - x0), rect.height / (y1 - y0), 1.6);
-  if (!Number.isFinite(k) || k <= 0) return;
-  const t = d3.zoomIdentity
+  if (!Number.isFinite(k) || k <= 0) return null;
+  return d3.zoomIdentity
     .translate(rect.width / 2, rect.height / 2)
     .scale(k)
     .translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
-  svg.transition().duration(ms).call(state.zoom.transform, t);
+}
+
+function fitToScreen(ms = 600) {
+  const t = fitTransform();
+  if (t) svg.transition().duration(ms).call(state.zoom.transform, t);
+}
+
+/** 첫 화면 — 한 점에서 시작해 망이 화면을 채울 때까지 열린다.
+ *  축소 한계(0.2)보다 훨씬 작은 배율에서 출발하므로 그동안만 한계를 풀어 둔다. */
+function introReveal() {
+  const t = fitTransform();
+  if (!t) { setTimeout(introReveal, 120); return; }   // 캔버스가 아직 안 잡혔다
+
+  const rect = svg.node().getBoundingClientRect();
+  const cx = (rect.width / 2 - t.x) / t.k;            // 화면 한가운데에 오는 월드 좌표
+  const cy = (rect.height / 2 - t.y) / t.k;
+  const k0 = t.k * 0.014;
+
+  state.intro = true;
+  state.zoom.scaleExtent([Math.min(k0, 0.2), 4]);
+
+  const t0 = d3.zoomIdentity
+    .translate(rect.width / 2, rect.height / 2)
+    .scale(k0)
+    .translate(-cx, -cy);
+
+  svg.interrupt();
+  svg.call(state.zoom.transform, t0);
+  gRoot.attr('opacity', 0);
+
+  const slow = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  gRoot.transition().duration(slow ? 0 : 1100).attr('opacity', 1);
+  svg.transition()
+    .duration(slow ? 0 : 2300)
+    .ease(d3.easeCubicOut)
+    .call(state.zoom.transform, t)
+    .on('end interrupt', () => {
+      state.zoom.scaleExtent([0.2, 4]);
+      state.intro = false;
+      gRoot.attr('opacity', 1);
+    });
+}
+
+/** 좌표 점을 누르면 상단 도구와 좌·우 바가 열린다. */
+function revealChrome() {
+  if (!document.body.classList.contains('intro')) return;
+  document.body.classList.remove('intro');
+  // 바가 열리며 캔버스가 좁아진 뒤에 다시 맞춘다
+  setTimeout(() => fitToScreen(520), 680);
 }
 
 function bindControls() {
@@ -1711,7 +1761,8 @@ function bindControls() {
     $('#toggle-org').classList.remove('is-on');
     applyVisibility();
     applyLabelVisibility();
-    fitToScreen();
+    document.body.classList.add('intro');
+    setTimeout(introReveal, 700);
   }
 
   $$('.zoom-ctl button').forEach((b) => b.addEventListener('click', () => {
@@ -1727,7 +1778,7 @@ function bindControls() {
     $('#legend-toggle').setAttribute('aria-expanded', String(!open));
   });
 
-  window.addEventListener('resize', () => fitToScreen(0));
+  window.addEventListener('resize', () => { if (!state.intro) fitToScreen(0); });
 }
 
 /* ═════════════════════════════════════════════════════════════
@@ -2077,7 +2128,7 @@ async function boot() {
   bindPolicyDialog();
   if (state.readOnly) markReadOnly();
 
-  setTimeout(() => fitToScreen(700), 700);
+  setTimeout(introReveal, 420);
 }
 
 boot().catch((err) => {
