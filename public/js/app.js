@@ -37,6 +37,13 @@ function nodeValue(n) {
   return Math.round(n.risk ?? 0);
 }
 
+/** 특정 섹터의 솔루션(공약)을 따로 강조한다. taxonomy.highlight 로 설정한다. */
+function highlightOf(n) {
+  const h = state.raw && state.raw.taxonomy && state.raw.taxonomy.highlight;
+  if (!h) return null;
+  return (n.level === h.level && n.sector === h.sector) ? h : null;
+}
+
 /** 얽힘도 → 램프 단계. applyPriority() 에서 계산해 둔 tone 을 그대로 쓴다. */
 function toneFor(n) {
   return TONE[Math.max(0, Math.min(TONE.length - 1, n.tone ?? 2))];
@@ -261,6 +268,14 @@ function applyPriority(nodes, links, byId) {
       n.r = lo + (hi - lo) * Math.pow(pct, 2.6);
     }
   }
+  // 강조 대상은 우선순위와 무관하게 가장 크게 — 시(市) 다음 크기다
+  const hl = state.raw && state.raw.taxonomy && state.raw.taxonomy.highlight;
+  if (hl) {
+    for (const n of nodes) {
+      if (n.level === hl.level && n.sector === hl.sector) n.r = hl.radius || 30;
+    }
+  }
+
   for (const n of nodes) {
     // 시(市)는 모든 축이 모이는 최종 수렴점이라 확실히 크게 둔다
     if (n.level === 'city') n.r = 40;
@@ -637,6 +652,8 @@ function buildModel(raw) {
 const statusMeta = () => Object.fromEntries(state.raw.taxonomy.status.map((s) => [s.id, s]));
 
 function nodeFill(n) {
+  const h = highlightOf(n);
+  if (h) return h.color;
   if (n.status === 'critical') return ALARM;
   return toneFor(n);
 }
@@ -1340,6 +1357,7 @@ function renderLegend() {
       <h4>상태 · 연결</h4>
       <div class="legend-item"><span class="legend-swatch" style="background:${tx.status.find((s) => s.id === 'critical').color}"></span>위험 · 실버 (링이 가득 참)</div>
       <div class="legend-item"><span class="legend-swatch" style="background:#43acfb"></span>연결됨 — 클릭 시 점등</div>
+      ${tx.highlight ? `<div class="legend-item"><span class="legend-swatch" style="background:${tx.highlight.color}"></span>${esc(tx.highlight.label)} — 강조</div>` : ''}
     </div>
     <div class="legend-group">
       <h4>관계</h4>
