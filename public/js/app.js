@@ -1220,10 +1220,10 @@ function applyLabelVisibility() {
 /* 박자 배속 — 1 이 원래 속도. 깜빡임·라벨·파문·머무는 시간이 이 값만큼 늘어난다.
    CSS 의 깜빡임 길이도 --seq-t 로 같은 값을 받는다.
    travel(선을 건너가는 시간)만 예외로 원래 속도를 지킨다 — 그 속도는 그대로가 좋다.
-   한 박이 약 3.5초에서 약 5.5초가 된다. */
-const SEQ_T = 1.6;
+   한 박이 약 3.5초에서 약 7.5초가 된다. */
+const SEQ_T = 2.3;
 const ms = (v) => Math.round(v * SEQ_T);
-const SEQ = { travel: 1500, blinkA: ms(900), hold: 1900, gap: 700 };
+const SEQ = { travel: 1500, blinkA: ms(900), hold: 2600, gap: 1100 };
 const BLINK_B = Math.round(620 * 3 * SEQ_T);   // CSS 의 seq-blink-b × 3 회
 const SEQ_GRAY = '#6f6d69';   // --ink-3. 속성 보간에는 var() 가 아니라 실제 값이 필요하다
 
