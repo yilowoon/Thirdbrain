@@ -865,14 +865,8 @@ function render() {
   // 연결이 많고 큰 노드 쪽이 두껍고, 작은 노드 쪽으로 갈수록 얇아진다.
   const linkKey = (l) => `${l.source.id ?? l.source}|${l.target.id ?? l.target}|${l.type}`;
 
-  const gradSel = gDefs.selectAll('linearGradient.lg').data(state.links, linkKey);
-  gradSel.exit().remove();
-  const gradEnter = gradSel.enter().append('linearGradient')
-    .attr('class', 'lg')
-    .attr('id', (l, i) => `lg${linkKey(l).replace(/[^A-Za-z0-9]/g, '_')}`)
-    .attr('gradientUnits', 'userSpaceOnUse');
-  gradEnter.append('stop').attr('class', 'g0').attr('offset', '0%');
-  gradEnter.append('stop').attr('class', 'g1').attr('offset', '100%');
+  // 선에는 그라데이션을 쓰지 않는다. 색은 은빛 하나이므로 CSS 가 정한다.
+  gDefs.selectAll('linearGradient.lg').remove();
 
   const linkSel = gLink.selectAll('path.link').data(state.links, linkKey);
   linkSel.exit().remove();
@@ -880,9 +874,7 @@ function render() {
     .attr('class', (l) => `link link-${l.type}`)
     .merge(linkSel)
     .attr('fill', 'none')
-    .attr('stroke', (l) => `url(#lg${linkKey(l).replace(/[^A-Za-z0-9]/g, '_')})`)
-    .attr('stroke-width', linkWidth)
-    .attr('stroke-linecap', 'round');
+    .attr('stroke-width', linkWidth);   // 색·점선·선끝은 CSS 에서 한 벌로 정한다
 
   // 채움 도형만으로는 관계 유형이 구분되지 않는다. 파선·점선 중심선을 덧그린다.
   const marked = state.links.filter((l) => l.type === 'dependency' || l.type === 'conflict');
@@ -890,8 +882,6 @@ function render() {
   markSel.exit().remove();
   markSel.enter().append('line')
     .attr('class', (l) => `link-mark mark-${l.type}`);
-
-  updateLinkPaint();
 
   const nodeSel = gNode.selectAll('g.node').data(state.nodes, (n) => n.id);
   nodeSel.exit().remove();
@@ -1027,9 +1017,6 @@ function refreshLinks() {
   gLinkMark.selectAll('line').filter(keep)
     .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
     .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
-  gDefs.selectAll('linearGradient.lg').filter(keep)
-    .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
-    .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
 }
 
 /** 선은 관계가 있다는 사실만 알리면 된다. 굵기에 의미를 싣지 않고
@@ -1037,8 +1024,8 @@ function refreshLinks() {
 /* non-scaling-stroke 를 걸었으므로 이 값이 곧 화면 픽셀이다.
    굵기에 의미를 싣지 않되, 육안으로 보이는 최소선은 넘긴다. */
 const LINE_W = {
-  converge: 0.9, affinity: 1.0, resolves: 1.3,
-  synergy: 1.3, dependency: 1.3, conflict: 1.5,
+  converge: 0.8, affinity: 0.8, resolves: 0.9,
+  synergy: 0.9, dependency: 0.9, conflict: 1.0,
 };
 const linkWidth = (l) => LINE_W[l.type] ?? 0.8;
 
@@ -1047,26 +1034,8 @@ function linePath(l) {
     + `L${l.target.x.toFixed(1)},${l.target.y.toFixed(1)}`;
 }
 
-/** 선의 색은 양끝 노드의 색을 잇는다 — 연결되면 양끝이 함께 블루로 물든다. */
-function updateLinkPaint() {
-  const lit = (n) => state.focus && state.actHops && state.actHops.has(n.id);
-  const endColor = (n) => {
-    if (!lit(n)) return nodeFill(n);
-    if (state.igniteColor) return state.igniteColor;  // 강조 계열에서 붙인 불
-    const h = highlightOf(n);        // 강조 노드는 점등돼도 제 색이므로 선도 그 색으로 맺는다
-    return h ? h.color : CONNECT;
-  };
-  const alpha = (l) => {
-    if (l.type === 'converge') return 0.34;
-    if (l.type === 'resolves') return 0.72;
-    return 0.85;
-  };
-  gDefs.selectAll('linearGradient.lg').filter(drawnOnly()).each(function (l) {
-    const g = d3.select(this);
-    g.select('stop.g0').attr('stop-color', endColor(l.source)).attr('stop-opacity', alpha(l));
-    g.select('stop.g1').attr('stop-color', endColor(l.target)).attr('stop-opacity', alpha(l));
-  });
-}
+/* 선의 색은 은빛 하나다. 유형은 색이 아니라 진하기와 점선 간격으로 갈린다.
+   — 모두 CSS 에 있다. 여기서 매번 다시 칠할 것이 없다. */
 
 /* ═════════════════════════════════════════════════════════════
    5. 가시성 · 점등(신경 발화)
@@ -1211,7 +1180,6 @@ function applyVisibility() {
       this.style.setProperty('--hop-delay', (near * 0.105).toFixed(3) + 's');
     });
 
-  updateLinkPaint();
 }
 
 /* 라벨의 보임·숨김은 배율의 몇 개 문턱에서만 갈린다. 줌 전환은 매 프레임
@@ -1575,12 +1543,13 @@ function renderFilters() {
       applyVisibility();
     }));
 
+  // 선은 전부 은빛 점선이다. 유형은 진하기로만 갈린다.
   const lt = [
-    ['resolves', '해소', '#7e93a8', 'solid'],
-    ['synergy', '시너지', '#4e8f79', 'solid'],
-    ['dependency', '선후의존', '#5f7fae', 'dashed'],
-    ['conflict', '상충', '#b8603f', 'dotted'],
-    ['converge', '수렴축', 'rgba(255,255,255,.35)', 'solid'],
+    ['resolves', '해소', 'rgba(196,203,212,.75)', 'dotted'],
+    ['synergy', '시너지', 'rgba(196,203,212,.6)', 'dotted'],
+    ['dependency', '선후의존', 'rgba(196,203,212,.6)', 'dashed'],
+    ['conflict', '상충', 'rgba(196,203,212,.6)', 'dotted'],
+    ['converge', '수렴축', 'rgba(196,203,212,.32)', 'dotted'],
   ];
   $('#filter-link').innerHTML = lt.map(([id, label, color, style]) =>
     `<button class="chip is-on" data-link="${id}">
