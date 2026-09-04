@@ -64,6 +64,7 @@ const state = {
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
+  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null,
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -685,7 +686,7 @@ const isAlerting = (n) => n.status === 'critical' || n.status === 'serious';
    ═════════════════════════════════════════════════════════════ */
 
 const svg = d3.select('#graph');
-let gRoot, gDefs, gBrain, gLink, gLinkMark, gNode, tooltipEl;
+let gRoot, gDefs, gBrain, gLink, gLinkMark, gSeq, gNode, tooltipEl;
 
 function initCanvas() {
   svg.selectAll('*').remove();
@@ -694,6 +695,7 @@ function initCanvas() {
   gBrain = gRoot.append('g').attr('class', 'brain').attr('aria-hidden', 'true');
   gLink = gRoot.append('g').attr('class', 'links');
   gLinkMark = gRoot.append('g').attr('class', 'link-marks');
+  gSeq = gRoot.append('g').attr('class', 'seq').attr('aria-hidden', 'true');
   gNode = gRoot.append('g').attr('class', 'nodes');
   tooltipEl = $('#tooltip');
 
@@ -823,6 +825,7 @@ const pullStrength = (n) =>
  *  ② 노드를 새 목표 근처로 바로 옮긴다 — 400개가 화면을 가로질러 날아가는 데
  *     수백 프레임이 걸려 전환이 느리게 느껴지기 때문이다. 이후 국소 정렬만 시킨다. */
 function retarget(snap = true) {
+  state.seqPairs = null;
   if (!state.sim) return;
   if (snap) {
     for (const n of state.nodes) {
@@ -1205,6 +1208,145 @@ function applyLabelVisibility() {
 }
 
 /* ═════════════════════════════════════════════════════════════
+   5-b. 대기 시퀀스 — 문제에서 해법으로
+   ─────────────────────────────────────────────────────────────
+   아무것도 고르지 않은 화면에서 스스로 도는 루프다.
+   왼쪽 고리의 진단(문제)이 깜빡이고, 그 진단을 겨냥한 공약으로
+   점선이 그라데이션을 끌고 건너가면, 오른쪽 공약이 크게 깜빡인다.
+   한 박에 한 쌍씩, 끝나면 다음 쌍으로 넘어가 끝없이 돈다.
+   ═════════════════════════════════════════════════════════════ */
+
+const SEQ = { travel: 1500, blinkA: 900, hold: 900, gap: 500 };
+
+/** 진단 → 그 진단을 겨냥한 공약. '가장 직접적인' 순으로 세운다.
+ *  겨냥하는 공약이 적은 진단일수록 그 한 줄이 직접적이고,
+ *  같은 조건이면 잔여위험이 큰 진단을 앞에 둔다. */
+function buildSeqPairs() {
+  const byDiag = new Map();
+  for (const l of state.links) {
+    if (l.type !== 'resolves') continue;
+    const p = l.source.id ? l.source : state.byId.get(l.source);   // resolves 는 공약 → 진단
+    const d = l.target.id ? l.target : state.byId.get(l.target);
+    if (!p || !d) continue;
+    if (!byDiag.has(d.id)) byDiag.set(d.id, { d, ps: [] });
+    byDiag.get(d.id).ps.push(p);
+  }
+  const pairs = [];
+  for (const { d, ps } of byDiag.values()) {
+    ps.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    pairs.push({ d, p: ps[0], direct: ps.length, risk: d.residual ?? d.severity ?? 0 });
+  }
+  pairs.sort((a, b) => a.direct - b.direct || b.risk - a.risk);
+  return pairs;
+}
+
+function seqStop() {
+  state.seqOn = false;
+  clearTimeout(state.seqTimer);
+  if (gSeq) { gSeq.interrupt(); gSeq.selectAll('*').interrupt().remove(); }
+  gNode.selectAll('g.node.seq-a, g.node.seq-b').classed('seq-a', false).classed('seq-b', false);
+}
+
+function seqStart() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  seqStop();
+  if (!state.seqPairs || !state.seqPairs.length) state.seqPairs = buildSeqPairs();
+  if (!state.seqPairs.length) return;
+  // 들어올 때마다 다른 쌍에서 시작한다 — 늘 같은 장면으로 열리지 않도록
+  if (state.seqIdx === 0) state.seqIdx = Math.floor(Math.random() * state.seqPairs.length);
+  state.seqOn = true;
+  state.seqTimer = setTimeout(seqBeat, 400);
+}
+
+const seqNode = (n) => gNode.selectAll('g.node').filter((d) => d.id === n.id);
+
+/** 한 점에서 파문이 번졌다 사라진다. */
+function seqPing(n, color, grow, delay, dur) {
+  gSeq.append('circle')
+    .attr('class', 'seq-ping')
+    .attr('cx', n.x).attr('cy', n.y).attr('r', n.r * 0.9)
+    .attr('stroke', color)
+    .attr('opacity', 0.85)
+    .transition().delay(delay).duration(dur).ease(d3.easeCubicOut)
+    .attr('r', n.r * grow).attr('opacity', 0)
+    .remove();
+}
+
+function seqBeat() {
+  if (!state.seqOn) return;
+
+  const pair = state.seqPairs[state.seqIdx++ % state.seqPairs.length];
+  const a = pair.d, b = pair.p;
+  if (a.x == null || b.x == null) { state.seqTimer = setTimeout(seqBeat, 300); return; }
+
+  gSeq.selectAll('*').interrupt().remove();
+
+  const hl = highlightOf(b);
+  const endTone = hl ? hl.color : TONE[6];
+
+  // ① 문제가 깜빡인다
+  seqNode(a).classed('seq-a', true);
+  seqPing(a, ALARM, 2.4, 0, 820);
+  seqPing(a, ALARM, 2.0, 380, 760);
+
+  // ② 점선이 그라데이션을 끌고 해법으로 건너간다
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const L = Math.hypot(dx, dy) || 1;
+  const ux = dx / L, uy = dy / L;
+  const band = Math.max(70, L * 0.4);
+
+  const grad = gDefs.select('#seq-grad').empty()
+    ? gDefs.append('linearGradient').attr('id', 'seq-grad').attr('gradientUnits', 'userSpaceOnUse')
+    : gDefs.select('#seq-grad');
+  grad.selectAll('stop').remove();
+  grad.append('stop').attr('offset', '0%').attr('stop-color', ALARM).attr('stop-opacity', 0);
+  grad.append('stop').attr('offset', '45%').attr('stop-color', ALARM).attr('stop-opacity', 0.95);
+  grad.append('stop').attr('offset', '75%').attr('stop-color', endTone).attr('stop-opacity', 0.95);
+  grad.append('stop').attr('offset', '100%').attr('stop-color', endTone).attr('stop-opacity', 0);
+
+  // 밴드의 앞머리가 a 를 떠나 b 를 지날 때까지 미끄러진다
+  const slide = (t) => {
+    const head = -band + t * (L + band);
+    grad.attr('x1', a.x + ux * head).attr('y1', a.y + uy * head)
+        .attr('x2', a.x + ux * (head + band)).attr('y2', a.y + uy * (head + band));
+  };
+  slide(0);
+
+  const d = `M${a.x},${a.y}L${b.x},${b.y}`;
+  const glow = gSeq.append('path')          // 점선 밑에 깔리는 옅은 번짐
+    .attr('class', 'seq-line glow')
+    .attr('d', d).attr('stroke', 'url(#seq-grad)').attr('opacity', 0);
+  const line = gSeq.append('path')
+    .attr('class', 'seq-line')
+    .attr('d', d).attr('stroke', 'url(#seq-grad)').attr('opacity', 0);
+
+  const lead = SEQ.blinkA * 0.45;
+  glow.transition('in').delay(lead).duration(240).attr('opacity', 0.18);
+  line.transition('in').delay(lead).duration(240).attr('opacity', 1);
+  line.transition('band').delay(lead).duration(SEQ.travel).ease(d3.easeCubicInOut)
+    .tween('band', () => slide);
+
+  // ③ 해법이 크게 깜빡인다
+  const bAt = SEQ.blinkA * 0.45 + SEQ.travel * 0.82;
+  state.seqTimer = setTimeout(() => {
+    if (!state.seqOn) return;
+    seqNode(b).classed('seq-b', true);
+    seqPing(b, endTone, 3.1, 0, 900);
+    seqPing(b, endTone, 2.6, 340, 860);
+    seqPing(b, endTone, 2.2, 680, 820);
+
+    line.transition('out').delay(SEQ.hold).duration(420).attr('opacity', 0).remove();
+    glow.transition('out').delay(SEQ.hold).duration(420).attr('opacity', 0).remove();
+
+    state.seqTimer = setTimeout(() => {
+      seqNode(a).classed('seq-a', false);
+      seqNode(b).classed('seq-b', false);
+      state.seqTimer = setTimeout(seqBeat, SEQ.gap);
+    }, SEQ.hold + 420);
+  }, bAt);
+}
+
+/* ═════════════════════════════════════════════════════════════
    6. 툴팁 · 초점
    ═════════════════════════════════════════════════════════════ */
 
@@ -1267,6 +1409,7 @@ const hideTooltip = () => { tooltipEl.hidden = true; };
 
 function setFocus(id) {
   revealChrome();
+  seqStop();                 // 고른 게 있으면 대기 시퀀스는 물러난다
   state.focus = id;
   applyVisibility();
   applyLabelVisibility();
@@ -1276,6 +1419,7 @@ function setFocus(id) {
 
 function clearFocus() {
   state.focus = null;
+  seqStart();
   applyVisibility();
   applyLabelVisibility();
   $('#detail-empty').hidden = false;
@@ -1697,6 +1841,7 @@ function introReveal() {
       state.zoom.scaleExtent([0.2, 4]);
       state.intro = false;
       gRoot.attr('opacity', 1);
+      if (!state.focus) seqStart();
     });
 }
 
