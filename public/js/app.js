@@ -1034,9 +1034,11 @@ function refreshLinks() {
 
 /** 선은 관계가 있다는 사실만 알리면 된다. 굵기에 의미를 싣지 않고
  *  육안으로 보이는 최소 두께의 실선으로 긋는다. */
+/* non-scaling-stroke 를 걸었으므로 이 값이 곧 화면 픽셀이다.
+   굵기에 의미를 싣지 않되, 육안으로 보이는 최소선은 넘긴다. */
 const LINE_W = {
-  converge: 0.5, affinity: 0.7, resolves: 0.9,
-  synergy: 1.0, dependency: 1.0, conflict: 1.1,
+  converge: 0.9, affinity: 1.0, resolves: 1.3,
+  synergy: 1.3, dependency: 1.3, conflict: 1.5,
 };
 const linkWidth = (l) => LINE_W[l.type] ?? 0.8;
 
@@ -1055,9 +1057,9 @@ function updateLinkPaint() {
     return h ? h.color : CONNECT;
   };
   const alpha = (l) => {
-    if (l.type === 'converge') return 0.26;
-    if (l.type === 'resolves') return 0.62;
-    return 0.8;
+    if (l.type === 'converge') return 0.34;
+    if (l.type === 'resolves') return 0.72;
+    return 0.85;
   };
   gDefs.selectAll('linearGradient.lg').filter(drawnOnly()).each(function (l) {
     const g = d3.select(this);

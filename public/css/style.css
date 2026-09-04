@@ -259,12 +259,19 @@ body {
 
 /* ── 그래프 요소 ────────────────────────────────────── */
 /* 연결선은 얇은 실선이다. 굵기에 의미를 싣지 않는다 — 색(그라데이션)만 양끝 노드를 잇는다. */
-.link { fill: none; pointer-events: none; transition: opacity .18s; }
+/* 굵기를 화면 픽셀로 못 박는다. 두께가 좌표계를 따라가면 화면 맞춤 배율
+   0.4 에서 0.36~0.56px 로 줄어 그려도 눈에 잡히지 않는다. */
+.link {
+  fill: none; pointer-events: none;
+  transition: opacity .18s;
+  vector-effect: non-scaling-stroke;
+}
 
 /* 관계 유형은 중심선 패턴으로 구분한다 */
 .link-mark { pointer-events: none; fill: none; transition: opacity .18s; }
-.mark-dependency { stroke: rgba(255,255,255,0.30); stroke-width: 0.8; stroke-dasharray: 6 5; }
-.mark-conflict   { stroke: var(--st-critical); stroke-width: 1.1; stroke-dasharray: 2 4; stroke-opacity: .85; }
+.link-mark { vector-effect: non-scaling-stroke; }
+.mark-dependency { stroke: rgba(255,255,255,0.30); stroke-width: 1.1; stroke-dasharray: 6 5; }
+.mark-conflict   { stroke: var(--st-critical); stroke-width: 1.4; stroke-dasharray: 2 4; stroke-opacity: .85; }
 
 .node { cursor: pointer; }
 .node-shape { transition: opacity .18s, stroke-width .18s; }
@@ -617,7 +624,7 @@ body {
 .node.act .mark-core   { fill: var(--connect); fill-opacity: .95; }
 .node.act .node-label  { fill: var(--connect-hi); }
 
-.link.act { stroke-width: 1.4; }
+.link.act { stroke-width: 1.8; }
 
 .node.act-self .mark-ring   { stroke: var(--connect-hi); stroke-width: 3; }
 .node.act-self .ring-outer  { stroke: var(--connect-hi); stroke-opacity: .95; }
