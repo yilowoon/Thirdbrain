@@ -68,6 +68,37 @@ node server.js
 
 ---
 
+## 배포 (Render)
+
+저장소에 `render.yaml` 블루프린트가 있다. Render 대시보드에서
+**New → Blueprint** 로 이 저장소를 고르면 그대로 뜬다.
+
+```yaml
+runtime: node · plan: free · startCommand: node server.js
+healthCheckPath: /api/graph · READ_ONLY: true
+```
+
+### 공개 배포는 쓰기를 잠근다
+
+`READ_ONLY=true` 면 모든 POST 가 403 이다. 누구나 접근하는 주소에서
+아무나 진단·공약·신호를 밀어 넣게 두지 않기 위해서다.
+대조(`/api/proposals/analyze`)는 열려 있어 화면에서 연결 지점 확인까지는 그대로 된다.
+**입력이 필요하면 로컬에서** `node server.js` **로 띄워 쓴다** (로컬은 기본 쓰기 가능).
+
+### 무료 플랜의 제약 두 가지
+
+- 15분 무접속이면 잠들고, 다음 요청에서 **30~60초** 깨어나는 시간이 걸린다.
+- 파일시스템이 휘발성이라 **재시작하면 `data/*.json` 변경분이 사라진다**.
+  쓰기를 살리려면 유료 플랜 + 디스크를 `/opt/render/project/src/data` 에 붙여야 한다.
+
+### 정적 호스팅을 쓸 때
+
+서버 없이 올리려면 `node tools/build-static.js` 로 `dist/` 를 만들어
+아무 정적 호스팅에나 올리면 된다. API 없이 `graph.json` 만으로 동작하고,
+정책 입력은 브라우저에서 대조한 뒤 제안 파일을 내려받는 방식으로 바뀐다.
+
+---
+
 ## 정밀 진단 — 97개 전수 채점
 
 세종시는 특정 분야가 아니라 **전 분야가 동시에 취약한 구조**다.

@@ -1985,8 +1985,9 @@ async function loadGraph() {
   try {
     const res = await fetch('api/graph', { cache: 'no-store' });
     if (res.ok) {
-      state.readOnly = false;
-      return res.json();
+      const data = await res.json();
+      state.readOnly = !!data.readOnly;   // 서버가 쓰기를 잠근 배포본일 수 있다
+      return data;
     }
   } catch { /* 정적 배포 — 아래로 넘어간다 */ }
   const res = await fetch('graph.json', { cache: 'no-store' });

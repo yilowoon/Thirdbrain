@@ -10,6 +10,10 @@ const { randomUUID } = require('crypto');
 const { autolink } = require('./tools/autolink.js');
 
 const PORT = process.env.PORT || 4173;
+/* 공개 배포에서는 쓰기를 잠근다. 누구나 접근하는 URL 이므로 아무나
+   진단·공약·신호를 밀어 넣을 수 있어서는 안 된다.
+   로컬에서는 기본값이 꺼져 있어 그대로 입력할 수 있다. */
+const READ_ONLY = process.env.READ_ONLY === 'true';
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
 const PUBLIC = path.join(ROOT, 'public');
@@ -95,6 +99,7 @@ async function getGraph() {
     links: links.links,
     signals: signals.signals,
     org,
+    readOnly: READ_ONLY,
     meta: {
       diagnoses: diagnoses._meta,
       pledges: pledges._meta,
@@ -335,6 +340,12 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const key = `${req.method} ${url.pathname}`;
   try {
+    if (READ_ONLY && req.method === 'POST' && !url.pathname.endsWith('/analyze')) {
+      return sendJson(res, 403, {
+        error: '읽기 전용으로 배포된 인스턴스입니다. 입력은 로컬에서 하세요.',
+        readOnly: true,
+      });
+    }
     if (routes[key]) return await routes[key](req, res);
     if (req.method === 'GET') return await serveStatic(req, res, url.pathname);
     send(res, 405, 'Method not allowed');
@@ -345,5 +356,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`ThirdBrain → http://localhost:${PORT}`);
+  console.log(`ThirdBrain → http://localhost:${PORT}${READ_ONLY ? '  (읽기 전용)' : ''}`);
 });
