@@ -890,6 +890,7 @@ function render() {
   enter.append('circle').attr('class', 'hit');
   enter.append('circle').attr('class', 'halo');
   enter.append('circle').attr('class', 'pulse');
+  enter.append('circle').attr('class', 'hl-fill');   // 강조 노드가 점등되면 꽉 찬다
   enter.append('circle').attr('class', 'ring-outer');            // 바깥 링 (위험 경보 · 영역/시)
   enter.append('circle').attr('class', 'mark-ring node-shape');  // 본 링
   enter.append('circle').attr('class', 'ring-inner node-shape'); // 안쪽 링 (공약 · 영역/시)
@@ -914,6 +915,14 @@ function render() {
   all.select('circle.pulse')
     .attr('r', (n) => n.r + 3)
     .style('display', (n) => (n.status === 'critical' && n.level === 'diagnosis' ? null : 'none'));
+
+  // 강조 노드는 점등되면 블루로 물들지 않고 제 색으로 꽉 찬다
+  all
+    .classed('is-highlight', (n) => !!highlightOf(n))
+    .style('--hl', (n) => (highlightOf(n) || {}).color || null);
+  all.select('circle.hl-fill')
+    .attr('r', (n) => (highlightOf(n) ? n.r * 0.9 : 0))
+    .attr('fill', (n) => (highlightOf(n) || {}).color || 'none');
 
   all.select('circle.ring-outer')
     .style('display', (n) => (n.status === 'critical' || isHub(n) ? null : 'none'))
@@ -1003,7 +1012,11 @@ function linePath(l) {
 /** 선의 색은 양끝 노드의 색을 잇는다 — 연결되면 양끝이 함께 블루로 물든다. */
 function updateLinkPaint() {
   const lit = (n) => state.focus && state.actHops && state.actHops.has(n.id);
-  const endColor = (n) => (lit(n) ? CONNECT : nodeFill(n));
+  const endColor = (n) => {
+    if (!lit(n)) return nodeFill(n);
+    const h = highlightOf(n);        // 강조 노드는 점등돼도 제 색이므로 선도 그 색으로 맺는다
+    return h ? h.color : CONNECT;
+  };
   const alpha = (l) => {
     if (l.type === 'converge') return 0.26;
     if (l.type === 'resolves') return 0.62;

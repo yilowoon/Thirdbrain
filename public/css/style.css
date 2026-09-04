@@ -797,3 +797,21 @@ body.is-readonly #btn-add { opacity: .45; }
 .side-label {
   fill: var(--ink-3); font-size: 15px; letter-spacing: .08em; opacity: .7;
 }
+
+/* ── 강조 노드: 점등되면 제 색으로 꽉 찬다 ──────────── */
+.hl-fill {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .28s ease;
+}
+.node.is-highlight.act .hl-fill { opacity: 1; }
+
+/* 다른 노드는 점등 시 블루로 물들지만, 강조 노드는 제 색을 지킨다 */
+.node.is-highlight.act .mark-ring,
+.node.is-highlight.act .ring-inner,
+.node.is-highlight.act .ring-outer { stroke: var(--hl); stroke-opacity: 1; }
+.node.is-highlight.act .mark-core  { fill: var(--hl); fill-opacity: 1; }
+.node.is-highlight.act .node-label { fill: var(--hl); }
+.node.is-highlight.act .halo       { stroke: var(--hl); }
+.node.is-highlight.act-self .mark-ring { stroke: var(--hl); stroke-width: 3; }
+.node.is-highlight.act-self .node-label { fill: var(--hl); font-weight: 600; }
