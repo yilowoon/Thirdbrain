@@ -663,18 +663,6 @@ function stampBuild(raw) {
   el.title = '서버 기동 ' + raw.version.startedAt;
 }
 
-/** 이 노드에서 불을 붙이면 어떤 색으로 번지는가. 강조 계열이 아니면 null(=기본 블루). */
-function igniteColorFor(id) {
-  if (!id) return null;
-  const h = state.raw && state.raw.taxonomy && state.raw.taxonomy.highlight;
-  if (!h) return null;
-  const n = state.nodes.find((x) => x.id === id);
-  if (!n) return null;
-  if (highlightOf(n)) return h.color;                              // 강조 노드 자신
-  if (n.level === 'sector' && n.id === h.sector) return h.color;   // 그 섹터
-  return null;
-}
-
 function nodeFill(n) {
   const h = highlightOf(n);
   if (h) return h.color;
@@ -1139,12 +1127,6 @@ function applyVisibility() {
 
   if (hop) refreshLinks();
 
-  // 점화의 색은 불을 붙인 지점이 정한다.
-  // 강조 노드나 그 섹터를 누르면 네트워크 전체가 블루 대신 그 색으로 켜진다.
-  state.igniteColor = igniteColorFor(state.focus);
-  svg.classed('ignite-hl', !!state.igniteColor)
-     .style('--ignite', state.igniteColor || null);
-
   // 애니메이션 재시작을 위해 클래스를 먼저 걷어낸다
   gNode.selectAll('g.node').classed('act', false);
   gLink.selectAll('path.link').classed('act', false);
@@ -1285,8 +1267,8 @@ function drawBeam(a, b) {
   clearBeam();
   if (!a || !b || a.x == null || b.x == null) return;
 
-  const base = state.igniteColor || CONNECT;          // 강조 계열이면 그 색을 따른다
-  const tip = state.igniteColor || CONNECT_HI;
+  const base = CONNECT;      // 점화색은 블루 하나다. 오렌지는 강조한 공약 자신에게만 쓴다
+  const tip = CONNECT_HI;
 
   const grad = gDefs.append('linearGradient')
     .attr('id', 'beam-grad').attr('gradientUnits', 'userSpaceOnUse')
