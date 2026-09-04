@@ -893,7 +893,7 @@ body:not(.intro) .stat-row { animation: chrome-in .5s ease both; }
 /* ① 문제 — 은빛으로 두 번 */
 .node.seq-a .mark-ring {
   stroke: var(--silver);
-  animation: seq-blink-a .92s ease-in-out 2 both;
+  animation: seq-blink-a calc(.92s * var(--seq-t, 1)) ease-in-out 2 both;
 }
 .node.seq-a .node-label { fill: var(--silver); }
 
@@ -902,7 +902,7 @@ body:not(.intro) .stat-row { animation: chrome-in .5s ease both; }
 .node.seq-b .ring-outer,
 .node.seq-b .ring-inner {
   stroke: var(--g6);
-  animation: seq-blink-b .62s ease-in-out 3 both;
+  animation: seq-blink-b calc(.62s * var(--seq-t, 1)) ease-in-out 3 both;
 }
 .node.seq-b .hl-fill  { opacity: .92; fill: var(--g6); }
 .node.seq-b.is-highlight .mark-ring,

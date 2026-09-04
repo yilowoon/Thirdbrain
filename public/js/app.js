@@ -1217,7 +1217,14 @@ function applyLabelVisibility() {
    한 박에 한 쌍씩, 끝나면 다음 쌍으로 넘어가 끝없이 돈다.
    ═════════════════════════════════════════════════════════════ */
 
-const SEQ = { travel: 1500, blinkA: 900, hold: 900, gap: 500 };
+/* 박자 배속 — 1 이 원래 속도. 깜빡임·라벨·파문·머무는 시간이 이 값만큼 늘어난다.
+   CSS 의 깜빡임 길이도 --seq-t 로 같은 값을 받는다.
+   travel(선을 건너가는 시간)만 예외로 원래 속도를 지킨다 — 그 속도는 그대로가 좋다.
+   한 박이 약 3.5초에서 약 5.5초가 된다. */
+const SEQ_T = 1.6;
+const ms = (v) => Math.round(v * SEQ_T);
+const SEQ = { travel: 1500, blinkA: ms(900), hold: 1900, gap: 700 };
+const BLINK_B = Math.round(620 * 3 * SEQ_T);   // CSS 의 seq-blink-b × 3 회
 const SEQ_GRAY = '#6f6d69';   // --ink-3. 속성 보간에는 var() 가 아니라 실제 값이 필요하다
 
 /** 진단 → 그 진단을 겨냥한 공약. '가장 직접적인' 순으로 세운다.
@@ -1258,8 +1265,9 @@ function seqStart() {
   if (!state.seqPairs.length) return;
   // 들어올 때마다 다른 쌍에서 시작한다 — 늘 같은 장면으로 열리지 않도록
   if (state.seqIdx === 0) state.seqIdx = Math.floor(Math.random() * state.seqPairs.length);
+  document.documentElement.style.setProperty('--seq-t', SEQ_T);
   state.seqOn = true;
-  state.seqTimer = setTimeout(seqBeat, 400);
+  state.seqTimer = setTimeout(seqBeat, ms(400));
 }
 
 const seqNode = (n) => gNode.selectAll('g.node').filter((d) => d.id === n.id);
@@ -1279,8 +1287,8 @@ function seqLabel(n, delay, color) {
     .attr('fill', color)
     .attr('opacity', 0)
     .text(`${nodeValue(n)}:${n.label}`)
-    .transition('in').delay(delay).duration(260).attr('opacity', 1)
-    .transition('out').delay(480).duration(1000).ease(d3.easeCubicInOut)
+    .transition('in').delay(delay).duration(ms(260)).attr('opacity', 1)
+    .transition('out').delay(ms(480)).duration(ms(1000)).ease(d3.easeCubicInOut)
       .attr('y', n.y + down)
       .style('font-size', (10.5 / k).toFixed(2) + 'px')
       .attr('fill', SEQ_GRAY)
@@ -1315,8 +1323,8 @@ function seqBeat() {
 
   // ① 문제가 깜빡인다
   seqNode(a).classed('seq-a', true);
-  seqPing(a, ALARM, 2.4, 0, 820);
-  seqPing(a, ALARM, 2.0, 380, 760);
+  seqPing(a, ALARM, 2.4, 0, ms(820));
+  seqPing(a, ALARM, 2.0, ms(380), ms(760));
   seqLabel(a, 0, ALARM);
 
   // ② 점선이 그라데이션을 끌고 해법으로 건너간다
@@ -1351,8 +1359,8 @@ function seqBeat() {
     .attr('d', d).attr('stroke', 'url(#seq-grad)').attr('opacity', 0);
 
   const lead = SEQ.blinkA * 0.45;
-  glow.transition('in').delay(lead).duration(240).attr('opacity', 0.18);
-  line.transition('in').delay(lead).duration(240).attr('opacity', 1);
+  glow.transition('in').delay(lead).duration(ms(240)).attr('opacity', 0.18);
+  line.transition('in').delay(lead).duration(ms(240)).attr('opacity', 1);
   line.transition('band').delay(lead).duration(SEQ.travel).ease(d3.easeCubicInOut)
     .tween('band', () => slide);
 
@@ -1361,19 +1369,19 @@ function seqBeat() {
   state.seqTimer = setTimeout(() => {
     if (!state.seqOn) return;
     seqNode(b).classed('seq-b', true);
-    seqPing(b, endTone, 3.1, 0, 900);
-    seqPing(b, endTone, 2.6, 340, 860);
-    seqPing(b, endTone, 2.2, 680, 820);
+    seqPing(b, endTone, 3.1, 0, ms(900));
+    seqPing(b, endTone, 2.6, ms(340), ms(860));
+    seqPing(b, endTone, 2.2, ms(680), ms(820));
     seqLabel(b, 0, endTone);
 
-    line.transition('out').delay(SEQ.hold).duration(420).attr('opacity', 0).remove();
-    glow.transition('out').delay(SEQ.hold).duration(420).attr('opacity', 0).remove();
+    line.transition('out').delay(SEQ.hold).duration(ms(420)).attr('opacity', 0).remove();
+    glow.transition('out').delay(SEQ.hold).duration(ms(420)).attr('opacity', 0).remove();
 
     state.seqTimer = setTimeout(() => {
       seqNode(a).classed('seq-a', false);
       seqNode(b).classed('seq-b', false);
       state.seqTimer = setTimeout(seqBeat, SEQ.gap);
-    }, SEQ.hold + 420);
+    }, Math.max(SEQ.hold + ms(420), BLINK_B));
   }, bAt);
 }
 
