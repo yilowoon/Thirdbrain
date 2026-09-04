@@ -1289,7 +1289,7 @@ function strongestCounterpart(n) {
   return out[0];
 }
 
-const BEAM_PERIOD = 1250;   // 빛덩어리가 한 번 건너가고 돌아오는 주기(ms)
+const BEAM_PERIOD = 2500;   // 빛덩어리가 한 번 건너가고 돌아오는 주기(ms)
 
 /* 고른 점과 그 짝은 한동안 크게 둔다. 원래 크기는 r0 에 넣어 두었다가
    초점이 풀리면 그대로 되돌린다. 라벨도 함께 커진다. */

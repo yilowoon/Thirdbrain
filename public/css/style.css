@@ -1018,7 +1018,7 @@ body.ui-top .stat-row { animation: chrome-in .55s ease both; }
 .node.beam-b .ring-inner {
   stroke: var(--beam);
   stroke-opacity: 1;
-  animation: beam-blink var(--beam-period, 1250ms) ease-in-out infinite;
+  animation: beam-blink var(--beam-period, 2500ms) ease-in-out infinite;
 }
 .node.beam-b .hl-fill  { opacity: .55; fill: var(--beam); }
 .node.beam-b .node-label { fill: var(--beam); font-weight: 600; }
