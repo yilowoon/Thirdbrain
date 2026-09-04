@@ -995,42 +995,46 @@ body.ui-top .stat-row { animation: chrome-in .55s ease both; }
 }
 
 /* ══ 선택한 점 → 반대쪽 짝 한 줄 ═══════════════════════════
-   나머지 선이 은빛 실오라기로 물러난 자리에서 이 한 줄만 점화색으로 남는다.
-   실선인 것은 의도다 — 점선 무리 속에서 곧바로 갈라져 보여야 한다. */
-.beam {
+   전선 위로 빛덩어리 한 토막이 건너간다. 은빛 점선 무리 속에서
+   이 한 줄만 실선이고 이 한 줄만 움직인다. */
+
+.beam-wire, .beam-halo, .beam-bolt {
   fill: none;
-  stroke-width: 1.9;
   stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
   pointer-events: none;
-}
-.beam-glow {
-  fill: none;
-  stroke-width: 7;
-  opacity: .17;
   vector-effect: non-scaling-stroke;
-  pointer-events: none;
-  filter: blur(1.2px);
 }
 
-/* 짝은 계속 깜빡인다 — 어느 점이 답인지 눈이 놓치지 않게 */
+/* 빛이 지나갈 길 — 있는 듯 없는 듯 */
+.beam-wire { stroke-width: 1.1; opacity: .3; }
+
+/* 빛덩어리 — 심지와 번짐 두 겹 */
+.beam-bolt { stroke-width: 2.8; opacity: .98; }
+.beam-halo { stroke-width: 9;   opacity: .3; filter: blur(2.5px); }
+
+/* 짝은 빛이 닿는 박자에 맞춰 깜빡인다 */
 .node.beam-b .mark-ring,
 .node.beam-b .ring-outer,
 .node.beam-b .ring-inner {
   stroke: var(--beam);
   stroke-opacity: 1;
-  animation: beam-blink 1.5s ease-in-out infinite;
+  animation: beam-blink var(--beam-period, 1250ms) ease-in-out infinite;
 }
 .node.beam-b .hl-fill  { opacity: .55; fill: var(--beam); }
 .node.beam-b .node-label { fill: var(--beam); font-weight: 600; }
 
+/* 빛덩어리는 주기의 60% 에 도착한다. 그 순간이 가장 밝다. */
 @keyframes beam-blink {
-  0%, 100% { stroke-opacity: .45; stroke-width: 1.6; }
-  50%      { stroke-opacity: 1;   stroke-width: 3.4; }
+  0%   { stroke-opacity: .40; stroke-width: 1.6; }
+  50%  { stroke-opacity: .55; stroke-width: 2.0; }
+  62%  { stroke-opacity: 1;   stroke-width: 3.8; }
+  100% { stroke-opacity: .40; stroke-width: 1.6; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .node.beam-b .mark-ring,
   .node.beam-b .ring-outer,
   .node.beam-b .ring-inner { animation: none; stroke-width: 2.6; }
+  .beam-halo { display: none; }
+  .beam-wire { opacity: .85; stroke-width: 1.8; }
 }

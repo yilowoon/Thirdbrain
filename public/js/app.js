@@ -64,7 +64,8 @@ const state = {
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
-  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null, beam: null, emph: [],
+  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null,
+  beam: null, beamTimer: null, emph: [],
   labelBand: null,
   uiOpen: false, uiTimers: [],
 };
@@ -1288,6 +1289,8 @@ function strongestCounterpart(n) {
   return out[0];
 }
 
+const BEAM_PERIOD = 1250;   // 빛덩어리가 한 번 건너가고 돌아오는 주기(ms)
+
 /* 고른 점과 그 짝은 한동안 크게 둔다. 원래 크기는 r0 에 넣어 두었다가
    초점이 풀리면 그대로 되돌린다. 라벨도 함께 커진다. */
 const EMPH = { self: [1.35, 1.75], mate: [1.9, 1.9] };   // [점 배율, 라벨 배율]
@@ -1312,9 +1315,11 @@ function unemphasize() {
 
 function clearBeam() {
   unemphasize();
-  if (gSeq) gSeq.selectAll('.beam, .beam-glow').interrupt().remove();
+  if (state.beamTimer) { state.beamTimer.stop(); state.beamTimer = null; }
+  if (gSeq) gSeq.selectAll('.beam-wire, .beam-halo, .beam-bolt').interrupt().remove();
   if (gDefs) gDefs.select('#beam-grad').remove();
-  if (gNode) gNode.selectAll('g.node.beam-b').classed('beam-b', false).style('--beam', null);
+  if (gNode) gNode.selectAll('g.node.beam-b').classed('beam-b', false)
+    .style('--beam', null).style('--beam-period', null);
   state.beam = null;
 }
 
@@ -1338,11 +1343,34 @@ function drawBeam(a, b) {
   emphasize(b, EMPH.mate);
 
   const d = `M${a.x},${a.y}L${b.x},${b.y}`;
-  gSeq.append('path').attr('class', 'beam-glow').attr('d', d).attr('stroke', 'url(#beam-grad)');
-  gSeq.append('path').attr('class', 'beam').attr('d', d).attr('stroke', 'url(#beam-grad)')
-    .attr('opacity', 0).transition().duration(360).attr('opacity', 1);
 
-  seqNode(b).classed('beam-b', true).style('--beam', tip);
+  // ① 전선 — 두 점을 잇는 옅은 실선. 빛이 지나갈 길이다.
+  gSeq.append('path').attr('class', 'beam-wire').attr('d', d).attr('stroke', 'url(#beam-grad)');
+
+  /* ② 빛덩어리 — 짧은 한 토막이 전선을 타고 건너간다.
+     dasharray 를 '토막 길이, 전체 길이' 로 두면 화면에 토막 하나만 남는다.
+     그 토막을 dashoffset 으로 밀면 그대로 이동이 된다.
+     번짐 한 겹을 같은 박자로 겹쳐 빛덩어리처럼 보이게 한다. */
+  const L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const dash = Math.max(26, L * 0.13);
+  const halo = gSeq.append('path').attr('class', 'beam-halo').attr('d', d).attr('stroke', tip);
+  const bolt = gSeq.append('path').attr('class', 'beam-bolt').attr('d', d).attr('stroke', tip);
+  for (const el of [halo, bolt]) el.attr('stroke-dasharray', `${dash.toFixed(1)} ${L.toFixed(1)}`);
+
+  // 앞의 60% 에 건너가고 나머지는 쉰다 — 끊임없이 흐르기보다 맥박처럼 친다
+  const CROSS = 0.6;
+  const span = dash + L;
+  state.beamTimer = d3.timer((e) => {
+    const t = (e % BEAM_PERIOD) / BEAM_PERIOD;
+    const p = t < CROSS ? d3.easeCubicInOut(t / CROSS) : 1;
+    const off = dash - p * span;
+    halo.attr('stroke-dashoffset', off);
+    bolt.attr('stroke-dashoffset', off);
+  });
+
+  seqNode(b).classed('beam-b', true)
+    .style('--beam', tip)
+    .style('--beam-period', BEAM_PERIOD + 'ms');   // 빛이 닿는 박자에 맞춰 깜빡인다
   state.beam = { a: a.id, b: b.id };
 }
 
