@@ -32,6 +32,10 @@
   --st-serious:  #d7ac49;
   --st-critical: #c4cbd4;   /* 위험 — 실버. 램프 전 단계와 색각이상 ΔE 15.5 이상 분리 */
 
+  /* 좌·우 바의 폭. 반응형 분기가 이 값만 바꾸면 열림 단계가 그대로 따라간다. */
+  --col-left: 268px;
+  --col-right: 340px;
+
   --radius: 10px;
   --font: "Pretendard Variable", Pretendard, system-ui, -apple-system,
           "Segoe UI", "Malgun Gothic", sans-serif;
@@ -153,7 +157,7 @@ body {
 .layout {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 268px minmax(0,1fr) 340px;
+  grid-template-columns: var(--col-left) minmax(0,1fr) var(--col-right);
   min-height: 0;
 }
 
@@ -516,15 +520,18 @@ body {
 
 /* ── 반응형 ─────────────────────────────────────────── */
 @media (max-width: 1280px) {
-  .layout { grid-template-columns: 232px minmax(0,1fr) 300px; }
+  :root { --col-left: 232px; --col-right: 300px; }
   .search input { width: 190px; }
   .stat-row { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 980px) {
   body { overflow: auto; }
+  /* 한 줄로 쌓이는 폭에서는 열림 단계와 무관하게 항상 한 칸이다 */
   .layout { grid-template-columns: 1fr; }
   .panel-left, .panel-right { border: 0; border-top: 1px solid var(--hairline); }
-  .canvas-wrap { height: 62vh; }
+  /* 세로로 쌓이는 폭에서는 캔버스가 줄어들지 않게 못 박는다.
+     flex: 1 1 auto 로 두면 바가 열리는 순간 눌려 사라진다. */
+  .canvas-wrap { height: 62vh; flex: 0 0 62vh; }
   .topbar { flex-wrap: wrap; }
   .topbar-tools { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
@@ -858,9 +865,11 @@ body.is-readonly #btn-add { opacity: .45; }
    (측정: 붙여 두면 13.7fps, 떼면 27.7fps)
    그래서 두 단계로 연다 — *-mount 로 자리를 만들고, 다음 프레임에
    본 클래스로 투명도와 위치를 움직인다. 움직이는 값은 합성으로 끝난다. */
-.layout                                       { grid-template-columns: 0 minmax(0,1fr) 0; }
-body.ui-left-mount  .layout                   { grid-template-columns: 268px minmax(0,1fr) 0; }
-body.ui-left-mount.ui-right-mount .layout     { grid-template-columns: 268px minmax(0,1fr) 340px; }
+@media (min-width: 981px) {
+  .layout                                   { grid-template-columns: 0 minmax(0,1fr) 0; }
+  body.ui-left-mount  .layout               { grid-template-columns: var(--col-left) minmax(0,1fr) 0; }
+  body.ui-left-mount.ui-right-mount .layout { grid-template-columns: var(--col-left) minmax(0,1fr) var(--col-right); }
+}
 
 body:not(.ui-left-mount)  .panel-left,
 body:not(.ui-right-mount) .panel-right { display: none; }

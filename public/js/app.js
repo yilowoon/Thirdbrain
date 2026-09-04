@@ -1923,7 +1923,7 @@ const UI_STEPS = [
   { cls: 'ui-top',   at: 1150 },                            // 점화가 끝난 뒤
   { cls: 'ui-left',  at: 1700, mount: true, refit: 320 },   // 폭이 바뀐 만큼 다시 앉힌다
   { cls: 'ui-right', at: 2260, mount: true, refit: 320 },
-  { cls: 'ui-aux',   at: 3060 },
+  { cls: 'ui-aux',   at: 3060, refit: 420 },   // 모두 자리 잡은 뒤 마지막으로 한 번 더
 ];
 
 function bareUI() {
