@@ -836,40 +836,61 @@ body.is-readonly #btn-add { opacity: .45; }
    망 하나만 두고 연다. 좌표 점을 누르는 순간 상단 도구와 좌·우 바가 열린다.
    판을 먼저 보여 주고, 읽을 것은 고른 뒤에 꺼내는 순서다. */
 
-.layout { transition: grid-template-columns .62s cubic-bezier(.22,.61,.36,1); }
-.panel, .topbar-tools, .legend, .zoom-ctl {
-  transition: opacity .45s ease .12s, visibility .45s;
-}
+/* 열림은 한 번에 일어나지 않는다. 망이 먼저 자리를 잡고,
+   상단 → 왼쪽 → 오른쪽 → 캔버스 덧것 순으로 하나씩 펼쳐진다.
+   한꺼번에 그리면 점화 계산과 패널 레이아웃이 같은 프레임에서 부딪쳐 끊긴다.
+   각 단계는 제 클래스(ui-*)가 붙을 때만 열린다. */
 
-body.intro .layout { grid-template-columns: 0 minmax(0,1fr) 0; }
-body.intro .panel {
-  opacity: 0; visibility: hidden; overflow: hidden;
-  padding-left: 0; padding-right: 0; border: 0;
+/* 폭은 단계마다 한 번에 바뀐다. grid-template-columns 를 전환하면
+   매 프레임 페이지 전체가 다시 배치되어(패널 안 수백 개 요소 포함)
+   점화와 겹치는 순간 프레임이 통째로 밀린다.
+   움직이는 것은 합성만으로 끝나는 opacity 와 transform 뿐이다.
+   폭이 바뀐 뒤 망은 fitToScreen 으로 미끄러져 들어간다. */
+.panel {
+  transition: opacity .55s ease, transform .55s cubic-bezier(.22,.61,.36,1);
+  will-change: opacity, transform;
 }
-body.intro .topbar-tools,
-body.intro .legend,
-body.intro .zoom-ctl { opacity: 0; visibility: hidden; pointer-events: none; }
-body.intro .stat-row { display: none; }
-body.intro .topbar { border-bottom-color: transparent; }
+.topbar-tools, .legend, .zoom-ctl { transition: opacity .55s ease, visibility .55s; }
 
-/* 첫 화면에서는 제목을 한 호흡 크게 둔다 — 이 화면에 그것 말고는 없다 */
+/* 바가 차지하는 폭 — 왼쪽이 먼저 열리고 오른쪽이 뒤따른다.
+   닫힌 바는 display:none 이다. visibility:hidden 으로 두면 폭이 0 이어도
+   배치·페인트 대상으로 남아, 점화가 도는 동안 프레임을 절반 넘게 깎아먹는다.
+   (측정: 붙여 두면 13.7fps, 떼면 27.7fps)
+   그래서 두 단계로 연다 — *-mount 로 자리를 만들고, 다음 프레임에
+   본 클래스로 투명도와 위치를 움직인다. 움직이는 값은 합성으로 끝난다. */
+.layout                                       { grid-template-columns: 0 minmax(0,1fr) 0; }
+body.ui-left-mount  .layout                   { grid-template-columns: 268px minmax(0,1fr) 0; }
+body.ui-left-mount.ui-right-mount .layout     { grid-template-columns: 268px minmax(0,1fr) 340px; }
+
+body:not(.ui-left-mount)  .panel-left,
+body:not(.ui-right-mount) .panel-right { display: none; }
+
+body:not(.ui-left)  .panel-left  { opacity: 0; transform: translateX(-20px); }
+body:not(.ui-right) .panel-right { opacity: 0; transform: translateX(20px); }
+
+body:not(.ui-top)   .topbar-tools { opacity: 0; visibility: hidden; pointer-events: none; }
+body:not(.ui-top)   .stat-row     { display: none; }
+body:not(.ui-top)   .topbar       { border-bottom-color: transparent; }
+body:not(.ui-aux)   .legend,
+body:not(.ui-aux)   .zoom-ctl     { opacity: 0; visibility: hidden; pointer-events: none; }
+
+/* 아직 상단이 열리기 전 — 제목을 한 호흡 크게 둔다 */
 .brand-text strong,
-.brand-text > span:not(.build-tag) { transition: font-size .5s ease, color .5s ease; }
-body.intro .brand-text strong { font-size: 21px; letter-spacing: .005em; }
-body.intro .brand-text > span  { font-size: 12.5px; color: var(--ink-2); }
-body.intro .brand-mark { width: 40px; height: 40px; }
-.brand-mark { transition: width .5s ease, height .5s ease; }
-body.intro .topbar { padding: 16px 22px; }
-.topbar { transition: padding .5s ease, border-bottom-color .5s ease; }
+.brand-text > span:not(.build-tag) { transition: font-size .55s ease, color .55s ease; }
+.brand-mark { transition: width .55s ease, height .55s ease; }
+.topbar { transition: padding .55s ease, border-bottom-color .55s ease; }
+body:not(.ui-top) .brand-text strong { font-size: 21px; letter-spacing: .005em; }
+body:not(.ui-top) .brand-text > span { font-size: 12.5px; color: var(--ink-2); }
+body:not(.ui-top) .brand-mark        { width: 40px; height: 40px; }
+body:not(.ui-top) .topbar            { padding: 16px 22px; }
 
-/* 상단 도구·좌우 바가 열릴 때의 등장 */
-body:not(.intro) .stat-row { animation: chrome-in .5s ease both; }
+body.ui-top .stat-row { animation: chrome-in .55s ease both; }
 @keyframes chrome-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .layout, .panel, .topbar-tools, .legend, .zoom-ctl,
+  .panel, .topbar-tools, .legend, .zoom-ctl,
   .brand-text strong, .brand-text > span, .brand-mark, .topbar { transition: none; }
-  body:not(.intro) .stat-row { animation: none; }
+  body.ui-top .stat-row { animation: none; }
 }
 
 /* ══ 대기 시퀀스 — 문제에서 해법으로 ═══════════════════════

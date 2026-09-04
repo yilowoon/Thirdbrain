@@ -64,7 +64,9 @@ const state = {
   query: '',
   zoom: null,
   transform: d3.zoomIdentity,
-  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null,
+  seqOn: false, seqIdx: 0, seqPairs: null, seqTimer: null, shownLinks: null,
+  labelBand: null,
+  uiOpen: false, uiTimers: [],
 };
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -999,6 +1001,8 @@ function render() {
         : Math.max(7.5, Math.min(10, 5.6 + n.r * 0.17))) + 'px')
     .text((n) => `${nodeValue(n)}:${n.label}`);
 
+  state.labelBand = null;   // 라벨을 새로 지었으니 캐시는 버린다
+
   state.sim.on('tick', () => {
     // 선이 숨겨진 상태(선택 전)에서는 선 계산을 통째로 건너뛴다 — 노드가 400개를
     // 넘어가면 이 차이가 크다. 선택 시점에 refreshLinks() 로 한 번에 맞춘다.
@@ -1011,12 +1015,19 @@ function render() {
 }
 
 /** 선의 기하와 그라데이션 좌표를 현재 노드 위치에 맞춘다. */
+/** 그려지는 선만 고른다. 숨은 선의 좌표·색은 다시 드러날 때 맞춰도 늦지 않다. */
+const drawnOnly = () => {
+  const set = state.shownLinks;
+  return set ? (l) => set.has(l) : () => true;
+};
+
 function refreshLinks() {
-  gLink.selectAll('path.link').attr('d', linePath);
-  gLinkMark.selectAll('line')
+  const keep = drawnOnly();
+  gLink.selectAll('path.link').filter(keep).attr('d', linePath);
+  gLinkMark.selectAll('line').filter(keep)
     .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
     .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
-  gDefs.selectAll('linearGradient.lg')
+  gDefs.selectAll('linearGradient.lg').filter(keep)
     .attr('x1', (l) => l.source.x).attr('y1', (l) => l.source.y)
     .attr('x2', (l) => l.target.x).attr('y2', (l) => l.target.y);
 }
@@ -1048,7 +1059,7 @@ function updateLinkPaint() {
     if (l.type === 'resolves') return 0.62;
     return 0.8;
   };
-  gDefs.selectAll('linearGradient.lg').each(function (l) {
+  gDefs.selectAll('linearGradient.lg').filter(drawnOnly()).each(function (l) {
     const g = d3.select(this);
     g.select('stop.g0').attr('stop-color', endColor(l.source)).attr('stop-opacity', alpha(l));
     g.select('stop.g1').attr('stop-color', endColor(l.target)).attr('stop-opacity', alpha(l));
@@ -1138,6 +1149,20 @@ function applyVisibility() {
 
   const hop = state.focus ? activationMap(state.focus) : null;
   state.actHops = hop;
+
+  // 선택 전에는 선을 아예 그리지 않는다. 점만 남은 화면에서 노드를 누르는
+  // 순간 그 노드의 망만 드러나게 하기 위해서다.
+  const linkHidden = (l) => {
+    if (!hop) return true;
+    if (state.hiddenLinkTypes.has(l.type)) return true;
+    if (!visible.has(l.source.id) || !visible.has(l.target.id)) return true;
+    return !(hop.has(l.source.id) && hop.has(l.target.id));
+  };
+  // 좌표와 색을 실제로 그려지는 선에만 쓴다. 662개를 전부 건드리면
+  // 그 662개의 그라데이션이 모두 무효화되어 한 프레임이 통째로 밀린다.
+  state.shownLinks = new Set();
+  for (const l of state.links) if (!linkHidden(l)) state.shownLinks.add(l);
+
   if (hop) refreshLinks();
 
   // 점화의 색은 불을 붙인 지점이 정한다.
@@ -1166,14 +1191,6 @@ function applyVisibility() {
       return (strengthAt(hop.get(n.id)) * 0.42).toFixed(3);
     });
 
-  // 선택 전에는 선을 아예 그리지 않는다. 점만 남은 화면에서 노드를 누르는
-  // 순간 그 노드의 망만 드러나게 하기 위해서다.
-  const linkHidden = (l) => {
-    if (!hop) return true;
-    if (state.hiddenLinkTypes.has(l.type)) return true;
-    if (!visible.has(l.source.id) || !visible.has(l.target.id)) return true;
-    return !(hop.has(l.source.id) && hop.has(l.target.id));
-  };
   gLink.selectAll('path.link').classed('hidden-layer', linkHidden).classed('dim', false);
   gLinkMark.selectAll('line').classed('hidden-layer', linkHidden);
 
@@ -1195,8 +1212,17 @@ function applyVisibility() {
   updateLinkPaint();
 }
 
-function applyLabelVisibility() {
+/* 라벨의 보임·숨김은 배율의 몇 개 문턱에서만 갈린다. 줌 전환은 매 프레임
+   배율을 바꾸지만, 문턱을 넘지 않았다면 410개 텍스트에 다시 쓸 이유가 없다.
+   그 한 줄이 화면 전개 구간의 프레임을 통째로 잡아먹고 있었다. */
+const LABEL_BREAKS = [0.3, 0.34, 0.4, 0.55];
+
+function applyLabelVisibility(force) {
   const k = state.transform.k;
+  const band = LABEL_BREAKS.reduce((c, b) => c + (k >= b ? 1 : 0), 0)
+    + '|' + (state.showOrg ? 1 : 0) + '|' + (state.focus || '');
+  if (!force && band === state.labelBand) return;
+  state.labelBand = band;
   // 작은 점에도 값을 붙여 보여준다. 너무 축소했을 때만 하위 라벨을 접는다.
   gNode.selectAll('text.node-label').style('display', (n) => {
     if (n.level === 'team') return state.showOrg && k >= 0.55 ? null : 'none';
@@ -1450,13 +1476,15 @@ function moveTooltip(ev) {
 const hideTooltip = () => { tooltipEl.hidden = true; };
 
 function setFocus(id) {
-  revealChrome();
   seqStop();                 // 고른 게 있으면 대기 시퀀스는 물러난다
   state.focus = id;
-  applyVisibility();
+  applyVisibility();         // 점화 — 이 프레임은 이것만 한다
   applyLabelVisibility();
-  renderDetail(state.byId.get(id));
   $$('.sector-row').forEach((el) => el.classList.toggle('is-on', el.dataset.id === id));
+
+  const n = state.byId.get(id);
+  if (state.uiOpen) renderDetail(n);
+  else revealChrome(() => renderDetail(n));   // 오른쪽 바가 열리는 차례에 그린다
 }
 
 function clearFocus() {
@@ -1887,12 +1915,49 @@ function introReveal() {
     });
 }
 
-/** 좌표 점을 누르면 상단 도구와 좌·우 바가 열린다. */
-function revealChrome() {
-  if (!document.body.classList.contains('intro')) return;
+/* 열림의 순서와 간격. 망이 점화를 끝내고 자리를 잡은 뒤에야 첫 단계가 온다.
+   한 프레임에 몰면 점화 계산과 패널 레이아웃이 부딪쳐 끊긴다. */
+/* 단계마다 시작 시각을 따로 준다. 오른쪽 뒤에 여유가 큰 것은
+   상세 내용을 그 자리에서 짓기 때문이다 — 다음 단계와 겹치면 또 끊긴다. */
+const UI_STEPS = [
+  { cls: 'ui-top',   at: 1150 },                            // 점화가 끝난 뒤
+  { cls: 'ui-left',  at: 1700, mount: true, refit: 320 },   // 폭이 바뀐 만큼 다시 앉힌다
+  { cls: 'ui-right', at: 2260, mount: true, refit: 320 },
+  { cls: 'ui-aux',   at: 3060 },
+];
+
+function bareUI() {
+  for (const t of state.uiTimers || []) clearTimeout(t);
+  state.uiTimers = [];
+  state.uiOpen = false;
+  for (const { cls } of UI_STEPS) document.body.classList.remove(cls, cls + '-mount');
+  document.body.classList.add('intro');
+}
+
+/** 좌표 점을 누르면 상단 → 왼쪽 → 오른쪽 → 캔버스 덧것 순으로 하나씩 열린다.
+ *  onRight 는 오른쪽 바가 열리는 차례에 실행된다 — 상세 그리기를 그때로 미뤄
+ *  점화와 같은 프레임에서 겹치지 않게 한다. */
+function revealChrome(onRight) {
+  if (state.uiOpen) { if (onRight) onRight(); return; }
+  state.uiOpen = true;
+  state.uiTimers = [];
   document.body.classList.remove('intro');
-  // 바가 열리며 캔버스가 좁아진 뒤에 다시 맞춘다
-  setTimeout(() => fitToScreen(520), 680);
+
+  for (const { cls, at, mount, refit } of UI_STEPS) {
+    state.uiTimers.push(setTimeout(() => requestAnimationFrame(() => {
+      // ① 자리를 만든다 — display 와 폭. 배치가 한 번 일어난다.
+      if (mount) document.body.classList.add(cls + '-mount');
+      if (refit) fitToScreen(refit);
+      // ② 다음 프레임에 움직인다 — 투명도와 위치는 합성으로 끝난다.
+      requestAnimationFrame(() => document.body.classList.add(cls));
+    }), at));
+  }
+  // 상세 내용은 오른쪽 바가 열리기 시작한 뒤에 짓는다. 이게 한 프레임에서
+  // 가장 무거운 일이라, 바가 움직이기 시작하는 순간과 겹치면 그 움직임이 끊긴다.
+  if (onRight) {
+    const right = UI_STEPS.find((u) => u.cls === 'ui-right');
+    state.uiTimers.push(setTimeout(onRight, right.at + 300));
+  }
 }
 
 function bindControls() {
@@ -1948,7 +2013,7 @@ function bindControls() {
     $('#toggle-org').classList.remove('is-on');
     applyVisibility();
     applyLabelVisibility();
-    document.body.classList.add('intro');
+    bareUI();
     setTimeout(introReveal, 700);
   }
 
