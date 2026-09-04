@@ -14,6 +14,20 @@ const PORT = process.env.PORT || 4173;
    진단·공약·신호를 밀어 넣을 수 있어서는 안 된다.
    로컬에서는 기본값이 꺼져 있어 그대로 입력할 수 있다. */
 const READ_ONLY = process.env.READ_ONLY === 'true';
+
+/* 지금 돌고 있는 게 어느 빌드인지 화면에서 바로 알 수 있게 한다.
+   Render 는 배포마다 RENDER_GIT_COMMIT 을 넣어 준다. 로컬에서는 git 에게 직접 묻는다. */
+const VERSION = (() => {
+  let commit = process.env.RENDER_GIT_COMMIT || '';
+  if (!commit) {
+    try {
+      commit = require('node:child_process')
+        .execSync('git rev-parse HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString().trim();
+    } catch { commit = 'unknown'; }
+  }
+  return { commit: commit.slice(0, 7), startedAt: new Date().toISOString() };
+})();
 const ROOT = __dirname;
 const DATA = path.join(ROOT, 'data');
 const PUBLIC = path.join(ROOT, 'public');
@@ -100,6 +114,7 @@ async function getGraph() {
     signals: signals.signals,
     org,
     readOnly: READ_ONLY,
+    version: VERSION,
     meta: {
       diagnoses: diagnoses._meta,
       pledges: pledges._meta,
@@ -117,6 +132,7 @@ const clamp01 = (v, fallback) => {
 
 const routes = {
   'GET /api/graph': async (req, res) => sendJson(res, 200, await getGraph()),
+  'GET /api/version': async (req, res) => sendJson(res, 200, VERSION),
 
   /** 시민 신호를 진단 항목에 연결한다. */
   'POST /api/signals': async (req, res) => {

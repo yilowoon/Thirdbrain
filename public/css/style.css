@@ -815,3 +815,18 @@ body.is-readonly #btn-add { opacity: .45; }
 .node.is-highlight.act .halo       { stroke: var(--hl); }
 .node.is-highlight.act-self .mark-ring { stroke: var(--hl); stroke-width: 3; }
 .node.is-highlight.act-self .node-label { fill: var(--hl); font-weight: 600; }
+
+/* ── 강조 계열에서 불을 붙이면 네트워크 전체가 그 색으로 켜진다 ──
+   블루는 '연결'의 기본색이고, 이때는 점화 지점의 색이 그 자리를 대신한다. */
+.ignite-hl .node.act .hl-fill    { opacity: 1; fill: var(--ignite); }
+.ignite-hl .node.act .mark-ring,
+.ignite-hl .node.act .ring-inner,
+.ignite-hl .node.act .ring-outer { stroke: var(--ignite); stroke-opacity: 1; }
+.ignite-hl .node.act .mark-core  { fill: var(--ignite); fill-opacity: 1; }
+.ignite-hl .node.act .node-label { fill: var(--ignite); }
+.ignite-hl .node.act .halo       { stroke: var(--ignite); }
+.ignite-hl .node.act-self .mark-ring  { stroke: #ffffff; stroke-width: 3; }
+.ignite-hl .node.act-self .node-label { fill: #ffffff; font-weight: 600; }
+
+/* 지금 보고 있는 빌드 표식 — 배포 갱신 여부를 눈으로 확인하기 위한 것 */
+.build-tag { color: var(--ink-3); opacity: .65; font-variant-numeric: tabular-nums; }

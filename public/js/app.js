@@ -651,6 +651,27 @@ function buildModel(raw) {
 
 const statusMeta = () => Object.fromEntries(state.raw.taxonomy.status.map((s) => [s.id, s]));
 
+/** 지금 보고 있는 화면이 어느 빌드인지 로고 밑에 적는다.
+ *  배포본이 갱신됐는지 새로고침만으로 확인할 수 있게 하기 위한 것이다. */
+function stampBuild(raw) {
+  const el = document.getElementById('build-tag');
+  if (!el || !raw || !raw.version) return;
+  el.textContent = ' · build ' + raw.version.commit;
+  el.title = '서버 기동 ' + raw.version.startedAt;
+}
+
+/** 이 노드에서 불을 붙이면 어떤 색으로 번지는가. 강조 계열이 아니면 null(=기본 블루). */
+function igniteColorFor(id) {
+  if (!id) return null;
+  const h = state.raw && state.raw.taxonomy && state.raw.taxonomy.highlight;
+  if (!h) return null;
+  const n = state.nodes.find((x) => x.id === id);
+  if (!n) return null;
+  if (highlightOf(n)) return h.color;                              // 강조 노드 자신
+  if (n.level === 'sector' && n.id === h.sector) return h.color;   // 그 섹터
+  return null;
+}
+
 function nodeFill(n) {
   const h = highlightOf(n);
   if (h) return h.color;
@@ -921,7 +942,7 @@ function render() {
     .classed('is-highlight', (n) => !!highlightOf(n))
     .style('--hl', (n) => (highlightOf(n) || {}).color || null);
   all.select('circle.hl-fill')
-    .attr('r', (n) => (highlightOf(n) ? n.r * 0.9 : 0))
+    .attr('r', (n) => n.r * 0.9)
     .attr('fill', (n) => (highlightOf(n) || {}).color || 'none');
 
   all.select('circle.ring-outer')
@@ -1014,6 +1035,7 @@ function updateLinkPaint() {
   const lit = (n) => state.focus && state.actHops && state.actHops.has(n.id);
   const endColor = (n) => {
     if (!lit(n)) return nodeFill(n);
+    if (state.igniteColor) return state.igniteColor;  // 강조 계열에서 붙인 불
     const h = highlightOf(n);        // 강조 노드는 점등돼도 제 색이므로 선도 그 색으로 맺는다
     return h ? h.color : CONNECT;
   };
@@ -1113,6 +1135,12 @@ function applyVisibility() {
   const hop = state.focus ? activationMap(state.focus) : null;
   state.actHops = hop;
   if (hop) refreshLinks();
+
+  // 점화의 색은 불을 붙인 지점이 정한다.
+  // 강조 노드나 그 섹터를 누르면 네트워크 전체가 블루 대신 그 색으로 켜진다.
+  state.igniteColor = igniteColorFor(state.focus);
+  svg.classed('ignite-hl', !!state.igniteColor)
+     .style('--ignite', state.igniteColor || null);
 
   // 애니메이션 재시작을 위해 클래스를 먼저 걷어낸다
   gNode.selectAll('g.node').classed('act', false);
@@ -1999,6 +2027,7 @@ function downloadProposal(payload, analysis) {
 async function reload() {
   const prev = new Map(state.nodes.map((n) => [n.id, { x: n.x, y: n.y }]));
   state.raw = await loadGraph();
+  stampBuild(state.raw);
   Object.assign(state, buildModel(state.raw));
   for (const n of state.nodes) {
     const p = prev.get(n.id);
@@ -2029,6 +2058,7 @@ async function loadGraph() {
 
 async function boot() {
   state.raw = await loadGraph();
+  stampBuild(state.raw);
   Object.assign(state, buildModel(state.raw));
 
   for (const n of state.nodes) {
